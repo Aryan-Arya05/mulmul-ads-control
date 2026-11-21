@@ -31,3 +31,9 @@ create table public.dash_doc_history (
 
 -- Row level security: a signed-in person reads a dashboard's rows only if private.can_view_dash(dashboard) is true.
 -- Nobody writes from the browser; data is saved with private.dash_set(dashboard, name, data).
+
+-- Saving data (migration "dashboards_write_helpers"). All run as the database owner, never from the browser.
+--   private.dash_set(dashboard, name, data)            save a whole document and keep it in history
+--   private.dash_begin / dash_append / dash_commit      build a long document in pieces, then publish it in one step
+--   private.ads_add_day(day, rows, new_ads, products)   add one day of per-ad numbers to the "periods" document
+-- public.dash_staging holds documents while they are being built.
