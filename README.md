@@ -12,4 +12,4 @@ Edit `src/adsdash.html`, `src/scorer.html` or `src/template.html`, then run `pyt
 
 ## Rule
 
-Never commit data files (spend, stock, product lists) to this repo. It is public; data belongs in the database behind sign-in. Files under `seed/` are encrypted and are only used to load the database.
+Never commit data files (spend, stock, product lists) to this repo. It is public; data belongs in the database behind sign-in.
