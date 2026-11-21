@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mulmul Ad Product Scorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* layout: summary strip of verdict counts on top, one dense sortable table below, method notes last */
+:root{
+  --bg:#f3f4f7; --panel:#ffffff; --ink:#161a2b; --muted:#5d6379; --line:#dfe2ea; --accent:#2b3a8f;
+  --push:#12734a; --push-bg:#dff3e8; --test:#1f5fae; --test-bg:#e0ecfb; --hold:#8a5a00; --hold-bg:#fbefd2;
+  --stop:#a8281f; --stop-bg:#fbe2df; --fix:#7a3aa3; --fix-bg:#f0e3f8; --clear:#5a5f6e; --clear-bg:#e8eaf0;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif; --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10121c; --panel:#191c2a; --ink:#eceef6; --muted:#9aa0b8; --line:#2c3046; --accent:#9fb0ff;
+    --push:#6fdca6; --push-bg:#123a2a; --test:#8fbcff; --test-bg:#16304f; --hold:#f2c56b; --hold-bg:#40300c;
+    --stop:#ff9a90; --stop-bg:#4a1a16; --fix:#d6a6f2; --fix-bg:#3a2149; --clear:#b3b8c9; --clear-bg:#2a2e40;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10121c; --panel:#191c2a; --ink:#eceef6; --muted:#9aa0b8; --line:#2c3046; --accent:#9fb0ff;
+  --push:#6fdca6; --push-bg:#123a2a; --test:#8fbcff; --test-bg:#16304f; --hold:#f2c56b; --hold-bg:#40300c;
+  --stop:#ff9a90; --stop-bg:#4a1a16; --fix:#d6a6f2; --fix-bg:#3a2149; --clear:#b3b8c9; --clear-bg:#2a2e40;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
+h1{font-family:var(--display);font-weight:700;font-size:28px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.meta{color:var(--muted);font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:left;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:2px;border-left-width:5px}
+.tile:focus-visible,.th:focus-visible,select:focus-visible,input:focus-visible,.rowbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tile[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent)}
+.tile b{font-family:var(--display);font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile span{font-weight:600;font-size:13px}
+.tile small{color:var(--muted);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls input,.controls select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.controls input{flex:1 1 220px;min-width:0}
+.count{color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+.tablebox{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1840px}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+th:nth-child(-n+4),td:nth-child(-n+4){text-align:left}
+thead th{position:sticky;top:0;background:var(--panel);font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.th{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0}
+.th[data-dir]::after{content:" ▾";color:var(--accent)}
+.th[data-dir="asc"]::after{content:" ▴"}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.name{font-weight:600;min-width:210px;max-width:300px}
+.on{min-width:130px;max-width:220px}
+.on .ty{word-break:break-word;margin-top:3px}
+.adstrip{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px 22px;align-items:baseline}
+.adstrip b{font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
+.adstrip button{font:inherit;background:none;border:0;color:var(--accent);cursor:pointer;padding:0;text-decoration:underline}
+.adstrip .bad b{color:var(--stop)}
+.name a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
+.name a:hover{color:var(--accent)}
+.ty{color:var(--muted);font-size:12px;font-weight:400}
+.why{color:var(--muted);font-size:12.5px;min-width:200px;max-width:340px;font-weight:400}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.PUSH{color:var(--push);background:var(--push-bg)} .TEST{color:var(--test);background:var(--test-bg)}
+.HOLD{color:var(--hold);background:var(--hold-bg)} .STOP{color:var(--stop);background:var(--stop-bg)}
+.FIX{color:var(--fix);background:var(--fix-bg)} .CLEAR,.SKIP{color:var(--clear);background:var(--clear-bg)}
+.t-PUSH{border-left-color:var(--push)} .t-TEST{border-left-color:var(--test)} .t-HOLD{border-left-color:var(--hold)}
+.t-STOP{border-left-color:var(--stop)} .t-FIX{border-left-color:var(--fix)} .t-CLEAR{border-left-color:var(--clear)}
+.score{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.bar{width:54px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.rowbtn{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:12px;padding:0}
+.sub td{background:color-mix(in srgb,var(--accent) 4%,var(--panel));text-align:left}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;font-size:12.5px}
+.subgrid div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding:2px 0}
+.subgrid span{color:var(--muted)}
+.dim{color:var(--muted)}
+.warn{color:var(--stop);font-weight:600}
+.pieces{margin:10px 0 6px;color:var(--muted);font-size:12.5px;max-width:90ch}
+.sizebox{overflow-x:auto}
+.sizes{min-width:0;width:auto;font-size:12.5px}
+.sizes th,.sizes td{padding:4px 10px;text-align:right;border-bottom:1px dashed var(--line);position:static;background:none}
+.sizes td:first-child,.sizes th:first-child{text-align:left;color:var(--muted)}
+.sizes .zero{color:var(--stop);font-weight:600}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.note h2{font-family:var(--display);font-size:16px;margin:0 0 8px}
+.note ul{margin:0;padding-left:18px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+.note li b{color:var(--ink);font-weight:600}
+.more{align-self:center;font:inherit;background:var(--panel);color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:8px 16px;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .2s}}
+
+/* ---- theme v2: indigo band header, shared page switch, lifted cards ---- */
+:root{--bg:#f1f2f9;--panel:#ffffff;--ink:#15173a;--muted:#5e6282;--line:#e1e3ef;--accent:#3a3fc4;--accent-soft:#cdd0f5;--band:#171a4a;--band2:#2c3190;--band-ink:#f5f5ff;--band-muted:#b9bdea;--gold:#f0b429;--shadow:0 1px 2px rgba(21,23,58,.05),0 10px 24px -14px rgba(21,23,58,.22)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d0f1f;--panel:#171a30;--ink:#eceefb;--muted:#9a9fc4;--line:#2a2e4d;--accent:#a3a8ff;--accent-soft:#3a3f7a;--band:#14173f;--band2:#262b7a;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 24px -14px rgba(0,0,0,.6)}}
+:root[data-theme="dark"]{--bg:#0d0f1f;--panel:#171a30;--ink:#eceefb;--muted:#9a9fc4;--line:#2a2e4d;--accent:#a3a8ff;--accent-soft:#3a3f7a;--band:#14173f;--band2:#262b7a;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 24px -14px rgba(0,0,0,.6)}
+.band{color:var(--band-ink);background-color:var(--band);background-image:radial-gradient(rgba(255,255,255,.08) 1.2px,transparent 1.6px),linear-gradient(120deg,var(--band),var(--band2));background-size:20px 20px,auto}
+.band-in{max-width:1320px;margin:0 auto;padding:26px 16px 18px;display:flex;flex-wrap:wrap;gap:18px 32px;justify-content:space-between;align-items:flex-end}
+.eyebrow{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:4px}
+.band h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.1;margin:0;color:#fff;text-wrap:balance}
+.bandmeta{color:var(--band-muted);font-size:13px;margin:8px 0 0;max-width:72ch}
+.switch{display:flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:4px;gap:4px}
+.switch a{display:flex;flex-direction:column;gap:1px;padding:8px 18px;border-radius:10px;color:var(--band-ink);text-decoration:none;font-weight:600;font-size:14px;white-space:nowrap}
+.switch a small{font-weight:400;font-size:11.5px;color:var(--band-muted)}
+.switch a.on{background:#fff;color:#171a4a}
+.switch a.on small{color:#5e6282}
+.switch a:not(.on):hover{background:rgba(255,255,255,.16)}
+.switch a:focus-visible,.jump a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.jump{max-width:1320px;margin:0 auto;padding:0 16px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.jump a{font-size:12.5px;color:var(--band-ink);text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:5px 13px}
+.jump a:hover{background:rgba(255,255,255,.14)}
+.card,.note,.tablebox,.adstat{border-radius:14px;box-shadow:var(--shadow)}
+.sechead{border-bottom:0;padding:6px 0 0}
+.sechead h2{display:flex;align-items:center;gap:10px;font-size:21px}
+.sechead h2::before{content:"";width:10px;height:10px;background:var(--gold);transform:rotate(45deg);border-radius:2px;flex:0 0 auto}
+.lead{border-left:4px solid var(--gold)}
+.lead p:first-child{font-weight:600;font-size:16px}
+.tile{position:relative;overflow:hidden}
+.card.tile{padding-top:18px}
+.card.tile::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
+.tile b{font-size:27px}
+thead th{background:color-mix(in srgb,var(--accent) 7%,var(--panel));text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+tbody tr:nth-child(even){background:color-mix(in srgb,var(--accent) 2.5%,transparent)}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.pill{font-size:12px;padding:4px 11px}
+.bar{border-radius:5px}
+.chip{font-weight:500}
+@media (max-width:760px){.band-in{padding:20px 12px 14px}.band h1{font-size:26px}.switch{width:100%}.switch a{flex:1;padding:8px 10px;white-space:normal}.jump{padding:0 12px 14px}}
+@media (prefers-reduced-motion:no-preference){.switch a,.jump a,.tile,.chip{transition:background-color .15s,box-shadow .15s,transform .15s}}
+.tile{border-radius:14px;box-shadow:var(--shadow);border-left-width:6px;padding:14px 16px}
+.tile b{font-size:30px}
+.tile:hover{transform:translateY(-1px)}
+.tile[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent),var(--shadow);background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+.adstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;background:none;border:0;padding:0}
+.adstrip>span{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:12px 16px;display:block;color:var(--muted);font-size:13px}
+.adstrip>span b{display:block;font-size:24px;color:var(--ink)}
+.adstrip>span.bad{border-color:color-mix(in srgb,var(--stop) 40%,var(--line));background:color-mix(in srgb,var(--stop-bg) 45%,var(--panel))}
+.adstrip button{display:inline-block;margin-top:4px;font-weight:600;text-decoration:none}
+.adstrip button:hover{text-decoration:underline}
+.controls input,.controls select{border-radius:10px;padding:9px 12px}
+.bar{height:7px}
+.bar i{background:linear-gradient(90deg,var(--accent),var(--gold))}
+@media (max-width:760px){
+  .wrap{padding:16px 12px 40px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tablebox{overflow-x:visible}
+  table{min-width:0;display:block}
+  thead{display:none}
+  tbody{display:block}
+  tbody tr{display:block;padding:12px 14px;border-bottom:1px solid var(--line)}
+  td,th:nth-child(-n+4),td:nth-child(-n+4){text-align:right}
+  td{display:flex;justify-content:space-between;gap:14px;padding:3px 0;border:0}
+  td::before{content:attr(data-label);color:var(--muted);font-size:12.5px;text-align:left;flex:0 0 auto;max-width:48%}
+  td:first-child{display:block;text-align:left;padding-bottom:6px}
+  td:first-child::before{content:none}
+  .name,.why,.on{max-width:none;min-width:0}
+  .name{font-size:15px}
+  .score{justify-content:flex-end}
+  .sub td{display:block;text-align:left}
+  .sub td::before{content:none}
+  .sizes{display:table}.sizes thead{display:table-header-group}.sizes tbody{display:table-row-group}.sizes tr{display:table-row;padding:0}.sizes td,.sizes th{display:table-cell}.sizes td::before{content:none}
+  .controls select{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+<div class="band">
+  <div class="band-in">
+    <div>
+      <div class="eyebrow">Shop Mulmul · Ads control</div>
+      <h1>Ad Product Scorer</h1>
+      <p class="bandmeta">Sales and traffic: Shopify India, 22 Oct to 21 Nov 2026 · Stock: Vinculum, synced 21 Nov 2026 around 3 pm IST · Production and in-transit: 19 Nov export · Meta ads: last 7 days</p>
+    </div>
+    <nav class="switch" aria-label="Pages">
+      <a href="https://claude.ai/artifact/G6BjD1V4Hy2p7amDY2RURj" target="_blank" rel="noopener">Ads vs Stock<small>Daily alerts and weekly review</small></a>
+      <a class="on" aria-current="page" href="https://claude.ai/artifact/TWLkg6J1WVQAmpp6Jtfv7R">Ad Product Scorer<small>What to push, hold or stop</small></a>
+    </nav>
+  </div>
+</div>
+<div class="wrap">
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="adstrip" id="adstrip"></div>
+
+  <div class="controls">
+    <input id="q" type="search" placeholder="Search product name" aria-label="Search product name">
+    <select id="type" aria-label="Product type"><option value="">All product types</option></select>
+    <select id="launch" aria-label="Launch window">
+      <option value="">Any launch date</option>
+      <option value="30">Launched in last 30 days</option>
+      <option value="60">Launched in last 60 days</option>
+      <option value="120">Launched in last 120 days</option>
+    </select>
+    <select id="ads" aria-label="Ads running">
+      <option value="">Ads running or not</option>
+      <option value="1">On ads now, any kind</option>
+      <option value="single">Single-product ad</option>
+      <option value="cat">Direct ad traffic to the product page</option>
+      <option value="coll">In a collection that ads land on</option>
+      <option value="0">No ad exposure seen</option>
+      <option value="risk">On ads with low stock</option>
+      <option value="gap">Push or Test, not on ads</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <button class="more" id="more" type="button">Show more rows</button>
+
+  <section class="notes">
+    <div class="note">
+      <h2>How pair stock is worked out</h2>
+      <ul>
+        <li><b>A set is a top plus a bottom.</b> Vinculum holds the kurta and the pant as separate pieces, so a set can only sell as many times as its scarcer piece allows.</li>
+        <li><b>Pairs on hand</b>: the lower of total tops and total bottoms across both warehouses and all open stores. Dupattas are optional and not counted.</li>
+        <li><b>Warehouse pairs</b>: the same sum using only Noida and Chhatarpur physical stock.</li>
+        <li><b>In production</b>: pieces sitting in the virtual production bin. Not on the shelf yet.</li>
+        <li><b>Left out</b>: VIR-STORE, the operations location, closed stores and in-transit stock.</li>
+        <li><b>A star</b> after the number means no Vinculum match was found and Shopify's figure is shown.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>What each verdict means</h2>
+      <ul>
+        <li><b>Push</b>: proven demand, at least 21 days of cover in real pairs, page converts.</li>
+        <li><b>Test</b>: launched in the last 30 days with 30+ pairs and images ready.</li>
+        <li><b>Hold</b>: under 21 days of cover, stock still in production, core sizes broken, high reversals, or steady without being a hero.</li>
+        <li><b>Stop</b>: was selling, now under 8 pairs or under 10 days of cover.</li>
+        <li><b>Fix page</b>: 2,000+ landing sessions and a buy rate far below the store median.</li>
+        <li><b>Clear</b>: 80+ pairs, 2 or fewer sold in 30 days, older than 120 days.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>How the score is built</h2>
+      <ul>
+        <li><b>Demand 30%</b>: units sold in 30 days, log scale, 60 units is full marks.</li>
+        <li><b>Stock 25%</b>: the lower of pairs on hand (60 is full marks) and days of cover (45 is full marks).</li>
+        <li><b>Page conversion 15%</b>: add-to-cart and purchase rate of landing sessions, store median scores 50. Needs 300+ sessions.</li>
+        <li><b>Momentum 10%</b>, <b>freshness 10%</b>, <b>content 10%</b>: 7-day run rate, days live, images and description.</li>
+        <li>Reversals above 30% take 8 points off. A new-customer share of 60% or more adds 4.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>Read these before acting</h2>
+      <ul>
+        <li><b>Pieces are matched by name and colour</b>, not by SKU. Open Detail to see which Vinculum pieces a set was paired from.</li>
+        <li><b>Days of cover uses online sales only</b> against stock that stores also sell from, so real cover is shorter.</li>
+        <li><b>Single ad</b> means its own ad was active on 21 Nov. <b>Via catalogue</b> means 50 or more sessions from Meta ads landed on its product page between 14 and 20 Nov, read from Shopify campaign tags. <b>In collection ad</b> means it sits in a collection page that ads send people to: Festive Edit, Makhmal Velvet, Bags, Footwear or Mulmul Oon. <b>None seen</b> means none of these, which is not proof it appears in no ad.</li>
+        <li><b>Ad traffic and ad orders</b> count sessions that landed directly on the product page. About 70% of Meta ad sessions land on collection pages, mostly Festive Edit, and cannot be tied to one product.</li>
+        <li><b>Ad spend covers single-product ads only</b>, matched by ad name, for the last 7 days (14 to 20 Nov). Catalogue, collection and video-mix ads cannot be tied to one product. ROAS is Meta’s website purchase ROAS and is shown for reference, not scored. Spend in red means ads are running on a product with almost no pairs.</li>
+        <li><b>Sessions are landing sessions only</b>, mostly ad traffic.</li>
+        <li>Free potli bags, gift cards, gift box, perfume, dupattas and separate pieces are left out.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var LABEL={PUSH:"Push",TEST:"Test",HOLD:"Hold",STOP:"Stop",FIX:"Fix page",CLEAR:"Clear",SKIP:"Skip"};
+  var HINT={PUSH:"scale these",TEST:"new, test budget",HOLD:"wait or replenish",STOP:"stock too low",FIX:"traffic not buying",CLEAR:"overstock, slow"};
+  var COLS=[
+    {k:"t",l:"Product",s:"t"},{k:"v",l:"Verdict",s:"v"},{k:"on",l:"On ads now",s:"ad"},{k:"why",l:"Why"},{k:"sc",l:"Score",s:"sc"},
+    {k:"u30",l:"Sold 30d",s:"u30"},{k:"u7",l:"Sold 7d",s:"u7"},{k:"stock",l:"Pairs on hand",s:"stock"},{k:"tb",l:"Top / bottom"},{k:"wp",l:"Warehouse pairs",s:"wp"},{k:"pr",l:"In production",s:"pr"},{k:"cover",l:"Days cover",s:"cover"},
+    {k:"ses",l:"Landing sessions",s:"ses"},{k:"conv",l:"Buy rate",s:"conv"},{k:"ats",l:"Ad traffic 7d",s:"ats"},{k:"atp",l:"Ad orders",s:"atp"},{k:"ad",l:"Ad spend 7d",s:"ad"},{k:"roas",l:"Ad ROAS",s:"roas"},{k:"age",l:"Days live",s:"age"},{k:"x",l:""}
+  ];
+  var data=[],state={v:"PUSH",q:"",type:"",launch:"",ads:"",sort:"sc",dir:"desc",limit:100,open:{}};
+  var $=function(id){return document.getElementById(id)};
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+  function num(n){return n==null?"–":Number(n).toLocaleString("en-IN")}
+
+  function onSingle(o){return o.ad!=null}
+  function onCat(o){return o.ad==null&&(o.ats||0)>=50}
+  function onColl(o){return !onSingle(o)&&!onCat(o)&&!!(o.col&&o.col.length)}
+  function onAny(o){return onSingle(o)||onCat(o)||onColl(o)}
+  function lowStock(o){return o.stock<8||o.v==="STOP"||(o.v==="HOLD"&&o.stock<21)}
+  function tiles(){
+    var box=$("tiles");box.textContent="";
+    ["PUSH","TEST","HOLD","STOP","FIX","CLEAR"].forEach(function(v){
+      var n=data.filter(function(o){return o.v===v}).length;
+      var b=el("button","tile t-"+v);b.type="button";b.setAttribute("aria-pressed",state.v===v?"true":"false");
+      b.appendChild(el("b",null,String(n)));b.appendChild(el("span",null,LABEL[v]));b.appendChild(el("small",null,HINT[v]));
+      b.addEventListener("click",function(){state.v=state.v===v?"":v;state.limit=100;render()});
+      box.appendChild(b);
+    });
+  }
+  function head(){
+    var tr=$("head");tr.textContent="";
+    COLS.forEach(function(c){
+      var th=el("th");
+      if(c.s){var b=el("button","th",c.l);b.type="button";if(state.sort===c.s)b.setAttribute("data-dir",state.dir);
+        b.addEventListener("click",function(){if(state.sort===c.s)state.dir=state.dir==="desc"?"asc":"desc";else{state.sort=c.s;state.dir=(c.s==="t"||c.s==="v")?"asc":"desc"}render()});
+        th.appendChild(b)}else th.textContent=c.l;
+      tr.appendChild(th);
+    });
+  }
+  function rows(){
+    var q=state.q.toLowerCase();
+    var r=data.filter(function(o){
+      if(state.v&&o.v!==state.v)return false;
+      if(!state.v&&o.v==="SKIP"&&!q&&["1","single","cat","coll","risk"].indexOf(state.ads)<0)return false;
+      if(state.type&&o.ty!==state.type)return false;
+      if(state.launch&&(o.age==null||o.age>+state.launch))return false;
+      if(state.ads==="1"&&!onAny(o))return false;
+      if(state.ads==="single"&&!onSingle(o))return false;
+      if(state.ads==="cat"&&!onCat(o))return false;
+      if(state.ads==="coll"&&!onColl(o))return false;
+      if(state.ads==="0"&&onAny(o))return false;
+      if(state.ads==="risk"&&!(onAny(o)&&lowStock(o)))return false;
+      if(state.ads==="gap"&&!(!onAny(o)&&(o.v==="PUSH"||o.v==="TEST")))return false;
+      if(q&&o.t.toLowerCase().indexOf(q)<0)return false;
+      return true;
+    });
+    var k=state.sort,d=state.dir==="desc"?-1:1;
+    r.sort(function(a,b){var x=a[k],y=b[k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;
+      if(typeof x==="string")return d*x.localeCompare(y);return d*(x-y)});
+    return r;
+  }
+  function body(){
+    var r=rows(),tb=$("body");tb.textContent="";
+    $("count").textContent=r.length+" products";
+    r.slice(0,state.limit).forEach(function(o){
+      var tr=el("tr");
+      var n=el("td","name");
+      if(o.h){var a=el("a",null,o.t);a.href="https://shopmulmul.com/products/"+encodeURIComponent(o.h);a.target="_blank";a.rel="noopener";n.appendChild(a)}else n.appendChild(document.createTextNode(o.t));
+      n.appendChild(el("div","ty",o.ty+(o.price?" · ₹"+num(o.price):"")));tr.appendChild(n);
+      var v=el("td");v.appendChild(el("span","pill "+o.v,LABEL[o.v]));tr.appendChild(v);
+      var oc=el("td","on");
+      if(onSingle(o)){oc.appendChild(el("span","pill "+(lowStock(o)?"STOP":"PUSH"),lowStock(o)?"Single ad, low stock":"Single ad"));(o.adn||[]).forEach(function(n){oc.appendChild(el("div","ty",n))})}
+      else if(onCat(o)){oc.appendChild(el("span","pill "+(lowStock(o)?"STOP":"TEST"),lowStock(o)?"Via catalogue, low stock":"Via catalogue"));(o.atc||[]).slice(0,2).forEach(function(c){oc.appendChild(el("div","ty",c[0]+" · "+num(c[1])+" sessions"))})}
+      else if(onColl(o)){oc.appendChild(el("span","pill "+(lowStock(o)?"STOP":"HOLD"),lowStock(o)?"In collection ad, low stock":"In collection ad"));o.col.slice(0,2).forEach(function(c){oc.appendChild(el("div","ty",c[0]+" · "+num(c[1])+" ad sessions to the collection"))});if(o.ats)oc.appendChild(el("div","ty",num(o.ats)+" landed on this product"))}
+      else{oc.appendChild(el("span","pill SKIP","None seen"));if(o.ats)oc.appendChild(el("div","ty",num(o.ats)+" ad sessions, under 50"))}
+      tr.appendChild(oc);
+      tr.appendChild(el("td","why",o.why));
+      var s=el("td"),sw=el("div","score");sw.appendChild(el("span",null,String(o.sc)));var bar=el("span","bar"),fill=el("i");fill.style.width=o.sc+"%";bar.appendChild(fill);sw.appendChild(bar);s.appendChild(sw);tr.appendChild(s);
+      tr.appendChild(el("td",null,num(o.u30)));tr.appendChild(el("td",null,num(o.u7)));tr.appendChild(el("td",null,num(o.stock)+(o.p?"":" *")));
+      tr.appendChild(el("td",o.p?null:"dim",o.p?(o.p.k==="set"?num(o.p.tu)+" / "+num(o.p.bu):num(o.p.tu)):"–"));
+      tr.appendChild(el("td",o.wp==null?"dim":null,num(o.wp)));
+      tr.appendChild(el("td",o.pr?null:"dim",o.pr?num(o.pr):"–"));
+      tr.appendChild(el("td",o.cover==null?"dim":null,o.cover==null?"–":(o.cover>365?"365+":num(o.cover))));
+      tr.appendChild(el("td",o.ses==null?"dim":null,num(o.ses)));
+      tr.appendChild(el("td",o.conv==null?"dim":null,o.conv==null?"–":o.conv.toFixed(2)+"%"));
+      tr.appendChild(el("td",o.ats==null?"dim":(lowStock(o)&&o.ats>=50?"warn":null),num(o.ats)));
+      tr.appendChild(el("td",o.atp==null?"dim":null,o.ats==null?"–":num(o.atp)));
+      tr.appendChild(el("td",o.ad==null?"dim":(o.stock<8||o.v==="STOP"||(o.v==="HOLD"&&o.stock<21)?"warn":null),o.ad==null?"–":"₹"+num(o.ad)));
+      tr.appendChild(el("td",o.roas==null?"dim":null,o.roas==null?(o.ad==null?"–":"none"):o.roas.toFixed(2)));
+      tr.appendChild(el("td",o.age==null?"dim":null,o.age==null?"–":num(o.age)));
+      var x=el("td"),b=el("button","rowbtn",state.open[o.t]?"Hide":"Detail");b.type="button";
+      b.addEventListener("click",function(){state.open[o.t]=!state.open[o.t];body()});x.appendChild(b);tr.appendChild(x);
+      for(var ci=0;ci<tr.children.length;ci++){tr.children[ci].setAttribute("data-label",COLS[ci]?COLS[ci].l:"")}
+      tb.appendChild(tr);
+      if(state.open[o.t]){
+        var sr=el("tr","sub"),td=el("td");td.colSpan=COLS.length;var g=el("div","subgrid");
+        [["Demand score",o.sub.d],["Stock score",o.sub.s],["Page conversion score",o.sub.c],["Momentum score",o.sub.m],["Freshness score",o.sub.f],["Content score",o.sub.k],
+         ["Add-to-cart rate",o.atc==null?null:o.atc.toFixed(2)+"%"],["Images",o.mc],["Reversed (returns, cancels)",o.ret==null?null:o.ret+"%"],["New-customer share",o.newp==null?null:o.newp+"%"]]
+        .forEach(function(p){var d=el("div");d.appendChild(el("span",null,p[0]));d.appendChild(el("b",null,p[1]==null?"no data":String(p[1])));g.appendChild(d)});
+        td.appendChild(g);
+        if(o.p){
+          var info=el("p","pieces",o.p.k==="set"?("Paired from "+o.p.top+" ("+num(o.p.tu)+") and "+o.p.bot+" ("+num(o.p.bu)+"). Same-size pairs: "+num(o.p.sp)+". In transit: "+num(o.p.tr)+". Shopify shows "+num(o.shop)+"."):("Vinculum piece: "+o.p.top+". In transit: "+num(o.p.tr)+". Shopify shows "+num(o.shop)+"."));
+          td.appendChild(info);
+          if(o.p.zs&&o.p.zs.length){
+            var st=el("table","sizes"),hr=el("tr");["Size"].concat(o.p.zs.map(function(z){return z[0]==="-"?"Free":z[0]})).forEach(function(x){hr.appendChild(el("th",null,x))});st.appendChild(hr);
+            var rowsDef=o.p.k==="set"?[["Top, all locations",1],["Bottom, all locations",2],["Top, warehouse",3],["Bottom, warehouse",4]]:[["All locations",1],["Warehouse",3]];
+            rowsDef.forEach(function(rd){var r2=el("tr");r2.appendChild(el("td",null,rd[0]));o.p.zs.forEach(function(z){var c=el("td",z[rd[1]]?null:"zero",String(z[rd[1]]==null?0:z[rd[1]]));r2.appendChild(c)});st.appendChild(r2)});
+            var box=el("div","sizebox");box.appendChild(st);td.appendChild(box);
+          }
+        }else{td.appendChild(el("p","pieces","No Vinculum match found by name and colour. The stock shown is Shopify's figure ("+num(o.shop)+"), which counts every kurta and pant size combination and runs high."))}
+        sr.appendChild(td);tb.appendChild(sr);
+      }
+    });
+    $("more").style.display=r.length>state.limit?"":"none";
+  }
+  function strip(){
+    var box=$("adstrip");box.textContent="";
+    var on=data.filter(onAny),single=data.filter(onSingle),cat=data.filter(onCat),risk=on.filter(lowStock),gap=data.filter(function(o){return !onAny(o)&&(o.v==="PUSH"||o.v==="TEST")});
+    var ses=function(a){return a.reduce(function(s,o){return s+(o.ats||0)},0)};
+    function part(cls,big,text,val,label){var d=el("span",cls);d.appendChild(el("b",null,big));d.appendChild(document.createTextNode(text+" "));var b=el("button",null,label);b.type="button";b.addEventListener("click",function(){state.ads=val;state.v="";state.limit=100;state.sort=val==="gap"?"sc":"ats";state.dir="desc";$("ads").value=val;render()});d.appendChild(b);box.appendChild(d)}
+    var coll=data.filter(onColl);
+    part(null,String(on.length),"products have ad exposure: "+single.length+" with their own ad, "+cat.length+" with direct ad traffic, "+coll.length+" inside a collection that ads land on.","1","Show them");
+    part("bad",String(risk.length),"of those are low on stock. "+num(ses(risk))+" ad sessions landed directly on them in 7 days.","risk","Show them");
+    part(null,String(gap.length),"Push or Test products have no ad exposure that I can see.","gap","Show them");
+  }
+  function render(){tiles();strip();head();body()}
+
+  $("q").addEventListener("input",function(e){state.q=e.target.value;state.limit=100;body()});
+  $("type").addEventListener("change",function(e){state.type=e.target.value;state.limit=100;body()});
+  $("launch").addEventListener("change",function(e){state.launch=e.target.value;state.limit=100;body()});
+  $("ads").addEventListener("change",function(e){state.ads=e.target.value;state.limit=100;if(state.ads)state.v="";render()});
+  $("more").addEventListener("click",function(){state.limit+=200;body()});
+
+  window.MulmulDocs.get("products.json").then(function(d){
+    data=d;
+    var types={};d.forEach(function(o){types[o.ty]=(types[o.ty]||0)+1});
+    Object.keys(types).sort(function(a,b){return types[b]-types[a]}).forEach(function(t){var op=el("option",null,t+" ("+types[t]+")");op.value=t;$("type").appendChild(op)});
+    render();
+  }).catch(function(){ $("count").textContent="Could not load the product data. Reload the page."; });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mulmul Ads Control</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* one page, two views: #view-dash (ads vs stock) and #view-scorer; each view's rules are scoped to its container */
+*{box-sizing:border-box}
+html,body{margin:0}
+__CSS_SCORER__
+__CSS_DASH__
+__CSS_BAND__
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+.switch button{font:inherit;cursor:pointer;border:0;background:none;text-align:left;display:flex;flex-direction:column;gap:1px;padding:8px 18px;border-radius:10px;color:var(--band-ink);font-weight:600;font-size:14px;white-space:nowrap}
+.switch button small{font-weight:400;font-size:11.5px;color:var(--band-muted)}
+.switch button[aria-selected="true"]{background:#fff;color:#171a4a}
+.switch button[aria-selected="true"] small{color:#5e6282}
+.switch button:not([aria-selected="true"]):hover{background:rgba(255,255,255,.16)}
+.switch button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* sign-in gate */
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--band);background-image:radial-gradient(rgba(255,255,255,.08) 1.2px,transparent 1.6px),linear-gradient(120deg,var(--band),var(--band2));background-size:20px 20px,auto}
+#gate .box{background:var(--panel);color:var(--ink);border-radius:16px;padding:28px 26px;width:100%;max-width:380px;box-shadow:0 20px 50px -20px rgba(0,0,0,.5)}
+#gate h1{font-family:var(--display);font-size:24px;margin:2px 0 6px}
+#gate .eyebrow{color:var(--accent)}
+#gate p{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+#gate label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 4px}
+#gate input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)}
+#gate button{width:100%;font:inherit;font-weight:600;cursor:pointer;border-radius:10px;padding:11px 12px;margin-top:14px;border:1px solid var(--accent);background:var(--accent);color:#fff}
+#gate button.alt{background:transparent;color:var(--ink);border-color:var(--line);margin-top:8px}
+#gate button:disabled{opacity:.6;cursor:default}
+#gate .msg{font-size:13px;margin-top:12px;min-height:18px;color:var(--stop,#c0392b)}
+#gate .or{text-align:center;font-size:12px;color:var(--muted);margin:14px 0 0}
+.who{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--band-muted);margin-top:10px;flex-wrap:wrap}
+.who button{font:inherit;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.3);background:none;color:var(--band-ink);border-radius:999px;padding:4px 12px}
+.who button:hover{background:rgba(255,255,255,.14)}
+[hidden]{display:none!important}
+@media (max-width:760px){.switch button{flex:1;padding:8px 10px;white-space:normal}}
+</style>
+</head>
+<body>
+<div id="gate">
+  <div class="box">
+    <div class="eyebrow">Shop Mulmul</div>
+    <h1>Ads Control</h1>
+    <p id="gate-lead">Sign in with your Mulmul Threads account.</p>
+    <form id="gate-form" autocomplete="on">
+      <label for="gate-email">Email</label><input id="gate-email" type="email" name="email" autocomplete="username" required>
+      <label for="gate-pass">Password</label><input id="gate-pass" type="password" name="password" autocomplete="current-password" required>
+      <button type="submit" id="gate-go">Sign in</button>
+    </form>
+    <div class="or" id="gate-or">or</div>
+    <button type="button" class="alt" id="gate-google">Continue with Google</button>
+    <button type="button" class="alt" id="gate-out" hidden>Sign out</button>
+    <div class="msg" id="gate-msg" role="alert"></div>
+  </div>
+</div>
+<div id="app" hidden>
+<div class="band">
+  <div class="band-in">
+    <div>
+      <div class="eyebrow">Shop Mulmul · Ads control</div>
+      <h1 id="band-title">Ads vs Stock</h1>
+      <p class="bandmeta" id="band-meta"></p>
+      <div class="who"><span id="who-name"></span><button type="button" id="who-out">Sign out</button></div>
+    </div>
+    <div class="switch" role="tablist" aria-label="Views">
+      <button type="button" role="tab" id="tab-dash" aria-selected="true">Ads vs Stock<small>Daily alerts and weekly review</small></button>
+      <button type="button" role="tab" id="tab-scorer" aria-selected="false">Ad Product Scorer<small>What to push, hold or stop</small></button>
+    </div>
+  </div>
+  <div class="jump" id="jump"><a href="#daily">Daily stock check</a><a href="#performance">Performance by date</a><a href="#segments">Audience segments</a><a href="#weekly">Week in review</a></div>
+</div>
+<div id="view-dash">
+__BODY_DASH__
+</div>
+<div id="view-scorer" hidden>
+__BODY_SCORER__
+</div>
+<script src="vendor/supabase.js?v=2.119.0"></script>
+<script>
+/* Sign-in and data access. Accounts are Mulmul Threads accounts; what a person may open is decided in the database, not here. */
+(function(){
+  var SB_URL="https://zcnthnhdwdtxalijrcik.supabase.co",SB_KEY="sb_publishable_FWivcWTl1QYFEXl5A6akMA_V2hbQcSD",DASH="ads-control";
+  var sb=supabase.createClient(SB_URL,SB_KEY),g=function(i){return document.getElementById(i)};
+  var ready,fail,gate=new Promise(function(a,b){ready=a;fail=b}),opened=false;
+  function msg(t){g("gate-msg").textContent=t||""}
+  function showGate(mode){g("app").hidden=true;g("gate").hidden=false;var denied=mode==="denied";
+    g("gate-form").hidden=denied;g("gate-google").hidden=denied;g("gate-or").hidden=denied;g("gate-out").hidden=!denied;
+    g("gate-lead").textContent=denied?"You are signed in, but this dashboard has not been shared with you. Ask a Mulmul Threads admin for access.":"Sign in with your Mulmul Threads account."}
+  function open(session){
+    if(opened)return;
+    sb.from("dash_docs").select("name").eq("dashboard",DASH).then(function(r){
+      if(r.error||!r.data||!r.data.length){showGate("denied");msg(r.error?"Could not reach the data. Try again.":"");return}
+      opened=true;g("who-name").textContent=session.user.email||"";g("gate").hidden=true;g("app").hidden=false;ready(true);
+      if(location.hash&&location.hash.indexOf("access_token")>=0)history.replaceState(null,"",location.pathname);
+    });
+  }
+  window.MulmulDocs={get:function(file){var name=String(file).replace(/\.json$/,"");
+    return gate.then(function(){return sb.from("dash_docs").select("data").eq("dashboard",DASH).eq("name",name).maybeSingle()})
+      .then(function(r){if(r.error)throw r.error;return r.data?r.data.data:null})}};
+  g("gate-form").addEventListener("submit",function(e){e.preventDefault();msg("");g("gate-go").disabled=true;
+    sb.auth.signInWithPassword({email:g("gate-email").value.trim(),password:g("gate-pass").value}).then(function(r){g("gate-go").disabled=false;
+      if(r.error)msg(/invalid/i.test(r.error.message)?"Email or password is not right.":r.error.message)})});
+  g("gate-google").addEventListener("click",function(){msg("");sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}}).then(function(r){if(r.error)msg(r.error.message)})});
+  function out(){sb.auth.signOut().then(function(){location.reload()})}
+  g("gate-out").addEventListener("click",out);g("who-out").addEventListener("click",out);
+  sb.auth.onAuthStateChange(function(ev,session){if(session)setTimeout(function(){open(session)},0);else if(!opened)showGate("signin")});
+  sb.auth.getSession().then(function(r){if(r.data&&r.data.session)open(r.data.session);else showGate("signin")});
+})();
+</script>
+<script>
+(function(){
+  var META={dash:__META_D__,scorer:__META_S__},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer"};
+  function g(i){return document.getElementById(i)}
+  function show(v,target){
+    g("view-dash").hidden=v!=="dash";g("view-scorer").hidden=v!=="scorer";
+    g("tab-dash").setAttribute("aria-selected",v==="dash"?"true":"false");g("tab-scorer").setAttribute("aria-selected",v==="scorer"?"true":"false");
+    g("band-title").textContent=TITLE[v];g("band-meta").textContent=META[v];g("jump").hidden=v!=="dash";
+    if(target){var t=g(target);if(t&&t.scrollIntoView)t.scrollIntoView()}
+  }
+  function route(){var h=(location.hash||"").replace("#","");if(h==="scorer")show("scorer");else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
+  g("tab-dash").addEventListener("click",function(){if(location.hash!=="#stock")location.hash="stock";route();if(window.scrollTo)window.scrollTo(0,0)});
+  g("tab-scorer").addEventListener("click",function(){if(location.hash!=="#scorer")location.hash="scorer";route();if(window.scrollTo)window.scrollTo(0,0)});
+  window.addEventListener("hashchange",route);route();
+})();
+</script>
+<script>__JS_DASH__</script>
+<script>__JS_SCORER__</script>
+</div>
+</body>
+</html>

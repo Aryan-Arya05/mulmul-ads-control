@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mulmul Ads vs Stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* layout: daily stock alerts first, then the week in review; each block is findings, numbers, table, charts */
+:root{
+  --bg:#f3f4f7; --panel:#ffffff; --ink:#161a2b; --muted:#5d6379; --line:#dfe2ea; --accent:#2b3a8f; --accent-soft:#c9cff0;
+  --ok:#12734a; --ok-bg:#dff3e8; --hold:#8a5a00; --hold-bg:#fbefd2; --stop:#a8281f; --stop-bg:#fbe2df; --cut:#7a3aa3; --cut-bg:#f0e3f8; --watch:#1f5fae; --watch-bg:#e0ecfb;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif; --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){color-scheme:dark;
+    --bg:#10121c; --panel:#191c2a; --ink:#eceef6; --muted:#9aa0b8; --line:#2c3046; --accent:#9fb0ff; --accent-soft:#3a4270;
+    --ok:#6fdca6; --ok-bg:#123a2a; --hold:#f2c56b; --hold-bg:#40300c; --stop:#ff9a90; --stop-bg:#4a1a16; --cut:#d6a6f2; --cut-bg:#3a2149; --watch:#8fbcff; --watch-bg:#16304f;}
+}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#10121c; --panel:#191c2a; --ink:#eceef6; --muted:#9aa0b8; --line:#2c3046; --accent:#9fb0ff; --accent-soft:#3a4270;
+  --ok:#6fdca6; --ok-bg:#123a2a; --hold:#f2c56b; --hold-bg:#40300c; --stop:#ff9a90; --stop-bg:#4a1a16; --cut:#d6a6f2; --cut-bg:#3a2149; --watch:#8fbcff; --watch-bg:#16304f;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
+h1{font-family:var(--display);font-weight:700;font-size:28px;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;text-wrap:balance}
+h3{font-family:var(--display);font-weight:500;font-size:15px;margin:0 0 8px}
+a{color:var(--accent)}
+.meta{color:var(--muted);font-size:13px}
+section{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.lead{font-size:15px;max-width:80ch;margin:0;display:flex;flex-direction:column;gap:6px}
+.lead p{margin:0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tile b{display:block;font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums;line-height:1.15}
+.tile span{color:var(--muted);font-size:12.5px}
+.tile small{display:block;font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.tablebox{overflow-x:auto;padding:0}
+table{border-collapse:collapse;width:100%;min-width:860px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+td{white-space:nowrap}
+td.l,td:first-child{white-space:normal}
+td.wrap{white-space:normal;min-width:180px;max-width:320px}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+.name{font-weight:600;min-width:160px;max-width:300px;overflow-wrap:anywhere;word-break:break-word}
+.sub{color:var(--muted);font-size:12px;font-weight:400;overflow-wrap:anywhere}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.p-stop{color:var(--stop);background:var(--stop-bg)} .p-hold{color:var(--hold);background:var(--hold-bg)} .p-cut{color:var(--cut);background:var(--cut-bg)}
+.p-watch{color:var(--watch);background:var(--watch-bg)} .p-keep{color:var(--ok);background:var(--ok-bg)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.barrow{display:grid;grid-template-columns:minmax(110px,220px) 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.barrow .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{display:flex;flex-direction:column;gap:2px}
+.bar{height:9px;border-radius:3px;background:var(--accent);min-width:2px}
+.bar.prev{background:var(--accent-soft);height:6px}
+.bar.risk{background:var(--stop)}
+.val{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+ul.plain b{color:var(--ink);font-weight:600}
+.empty{color:var(--muted);margin:0}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.controls label{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+.controls input,.controls select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+.chip:focus-visible,.controls input:focus-visible,.controls select:focus-visible,.sortbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sortbtn{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0}
+.sortbtn[data-dir]::after{content:" ▾";color:var(--accent)}
+.sortbtn[data-dir="asc"]::after{content:" ▴"}
+.up{color:var(--ok)} .down{color:var(--stop)}
+.score{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.mini{display:inline-block;width:70px;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.mini i{display:block;height:100%;background:var(--accent)}
+.sortwrap{display:none}
+@media (max-width:760px){
+  .wrap{padding:16px 12px 40px;gap:18px}
+  h1{font-size:23px} h2{font-size:18px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tile b{font-size:20px}
+  .controls{flex-direction:column;align-items:stretch}
+  .controls label{justify-content:space-between}
+  .controls input,.controls select{flex:1;min-width:0;max-width:65%}
+  .sortwrap{display:flex}
+  .tablebox{overflow-x:visible}
+  table{min-width:0;display:block}
+  thead{display:none}
+  tbody{display:flex;flex-direction:column;gap:0}
+  tbody tr{display:block;padding:12px 16px;border-bottom:1px solid var(--line)}
+  tbody tr:last-child{border-bottom:0}
+  td{display:flex;justify-content:space-between;gap:14px;padding:3px 0;border:0;text-align:right;white-space:normal}
+  td.wrap{min-width:0;max-width:none}
+  td::before{content:attr(data-label);color:var(--muted);font-size:12.5px;text-align:left;flex:0 0 auto;max-width:50%}
+  td:first-child{display:block;text-align:left;padding-bottom:6px}
+  td:first-child::before{content:none}
+  .name{max-width:none;min-width:0;font-size:15px}
+  .barrow{grid-template-columns:1fr auto;gap:4px 10px}
+  .barrow .track{grid-column:1/-1;order:3}
+  .barrow .val{white-space:normal;text-align:right}
+  .legend{gap:8px 14px}
+}
+
+/* ---- theme v2: indigo band header, shared page switch, lifted cards ---- */
+:root{--bg:#f1f2f9;--panel:#ffffff;--ink:#15173a;--muted:#5e6282;--line:#e1e3ef;--accent:#3a3fc4;--accent-soft:#cdd0f5;--band:#171a4a;--band2:#2c3190;--band-ink:#f5f5ff;--band-muted:#b9bdea;--gold:#f0b429;--shadow:0 1px 2px rgba(21,23,58,.05),0 10px 24px -14px rgba(21,23,58,.22)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0d0f1f;--panel:#171a30;--ink:#eceefb;--muted:#9a9fc4;--line:#2a2e4d;--accent:#a3a8ff;--accent-soft:#3a3f7a;--band:#14173f;--band2:#262b7a;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 24px -14px rgba(0,0,0,.6)}}
+:root[data-theme="dark"]{--bg:#0d0f1f;--panel:#171a30;--ink:#eceefb;--muted:#9a9fc4;--line:#2a2e4d;--accent:#a3a8ff;--accent-soft:#3a3f7a;--band:#14173f;--band2:#262b7a;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 24px -14px rgba(0,0,0,.6)}
+.band{color:var(--band-ink);background-color:var(--band);background-image:radial-gradient(rgba(255,255,255,.08) 1.2px,transparent 1.6px),linear-gradient(120deg,var(--band),var(--band2));background-size:20px 20px,auto}
+.band-in{max-width:1320px;margin:0 auto;padding:26px 16px 18px;display:flex;flex-wrap:wrap;gap:18px 32px;justify-content:space-between;align-items:flex-end}
+.eyebrow{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:4px}
+.band h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.1;margin:0;color:#fff;text-wrap:balance}
+.bandmeta{color:var(--band-muted);font-size:13px;margin:8px 0 0;max-width:72ch}
+.switch{display:flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:4px;gap:4px}
+.switch a{display:flex;flex-direction:column;gap:1px;padding:8px 18px;border-radius:10px;color:var(--band-ink);text-decoration:none;font-weight:600;font-size:14px;white-space:nowrap}
+.switch a small{font-weight:400;font-size:11.5px;color:var(--band-muted)}
+.switch a.on{background:#fff;color:#171a4a}
+.switch a.on small{color:#5e6282}
+.switch a:not(.on):hover{background:rgba(255,255,255,.16)}
+.switch a:focus-visible,.jump a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.jump{max-width:1320px;margin:0 auto;padding:0 16px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.jump a{font-size:12.5px;color:var(--band-ink);text-decoration:none;border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:5px 13px}
+.jump a:hover{background:rgba(255,255,255,.14)}
+.card,.note,.tablebox,.adstat{border-radius:14px;box-shadow:var(--shadow)}
+.sechead{border-bottom:0;padding:6px 0 0}
+.sechead h2{display:flex;align-items:center;gap:10px;font-size:21px}
+.sechead h2::before{content:"";width:10px;height:10px;background:var(--gold);transform:rotate(45deg);border-radius:2px;flex:0 0 auto}
+.lead{border-left:4px solid var(--gold)}
+.lead p:first-child{font-weight:600;font-size:16px}
+.tile{position:relative;overflow:hidden}
+.card.tile{padding-top:18px}
+.card.tile::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--accent),var(--gold))}
+.tile b{font-size:27px}
+thead th{background:color-mix(in srgb,var(--accent) 7%,var(--panel));text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+tbody tr:nth-child(even){background:color-mix(in srgb,var(--accent) 2.5%,transparent)}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.pill{font-size:12px;padding:4px 11px}
+.bar{border-radius:5px}
+.chip{font-weight:500}
+@media (max-width:760px){.band-in{padding:20px 12px 14px}.band h1{font-size:26px}.switch{width:100%}.switch a{flex:1;padding:8px 10px;white-space:normal}.jump{padding:0 12px 14px}}
+@media (prefers-reduced-motion:no-preference){.switch a,.jump a,.tile,.chip{transition:background-color .15s,box-shadow .15s,transform .15s}}
+.wrap{max-width:1320px}
+.statusbox{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center}
+.statusbox .big{font-family:var(--display);font-size:20px;font-weight:700}
+.statusbox .dot{width:12px;height:12px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 5px color-mix(in srgb,var(--gold) 25%,transparent);flex:0 0 auto}
+section{scroll-margin-top:12px}
+
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line);flex:1;min-width:80px}
+.stack i{display:block;height:100%}
+.sw-new,.stack .g-new{background:#2f6fde}.sw-eng,.stack .g-eng{background:#e0a02a}.sw-exi,.stack .g-exi{background:#2a9d6f}.sw-oth,.stack .g-oth{background:#a9adb8}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:12.5px;color:var(--muted)}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.mixrow{display:grid;grid-template-columns:minmax(120px,230px) 1fr auto;gap:6px 12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.mixrow:last-child{border-bottom:0}.mixrow .lab{font-weight:600;font-size:13.5px;overflow-wrap:anywhere}.mixrow .val{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.segdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+tr.grp td{background:rgba(120,130,160,.09);font-weight:600}
+@media (max-width:720px){.mixrow{grid-template-columns:1fr auto}.mixrow .stack{grid-column:1/-1;order:3}}
+</style>
+</head>
+<body>
+<div class="band">
+  <div class="band-in">
+    <div>
+      <div class="eyebrow">Shop Mulmul · Ads control</div>
+      <h1>Ads vs Stock</h1>
+      <p class="bandmeta">Meta ad account 277407879800547, checked against real Vinculum stock counted as pairs. Updates every morning.</p>
+    </div>
+    <nav class="switch" aria-label="Pages">
+      <a class="on" aria-current="page" href="https://claude.ai/artifact/G6BjD1V4Hy2p7amDY2RURj">Ads vs Stock<small>Daily alerts and weekly review</small></a>
+      <a href="https://claude.ai/artifact/TWLkg6J1WVQAmpp6Jtfv7R" target="_blank" rel="noopener">Ad Product Scorer<small>What to push, hold or stop</small></a>
+    </nav>
+  </div>
+  <div class="jump"><a href="#daily">Daily stock check</a><a href="#performance">Performance by date</a><a href="#segments">Audience segments</a><a href="#weekly">Week in review</a></div>
+</div>
+<div class="wrap">
+
+  <section id="daily">
+    <div class="sechead"><h2>Daily stock check</h2><span class="meta" id="d-meta"></span></div>
+    <div class="card lead" id="d-lead"></div>
+    <div class="tiles" id="d-tiles"></div>
+    <div class="card tablebox" id="d-table"></div>
+    <div class="grid2" id="d-grid">
+      <div class="card"><h3>What changed since the day before</h3><div id="d-changes"></div></div>
+      <div class="card"><h3>Spend on Stop and Hold products, by day</h3><div id="d-history"></div></div>
+    </div>
+    <div class="card" id="d-notescard"><h3>Notes</h3><div id="d-notes"></div></div>
+  </section>
+
+  <section id="performance">
+    <div class="sechead"><h2>Performance by date</h2><span class="meta" id="p-meta"></span></div>
+    <div class="card controls">
+      <div class="presets" id="p-presets"></div>
+      <label>From <input type="date" id="p-from"></label>
+      <label>To <input type="date" id="p-to"></label>
+      <label class="sortwrap">Sort by <select id="p-sort"></select></label>
+      <label>Group by <select id="p-group"><option value="product">Product</option><option value="ad">Ad</option><option value="adset">Ad set (audience)</option><option value="campaign">Campaign</option></select></label>
+    </div>
+    <div class="card lead" id="p-lead"></div>
+    <div class="tiles" id="p-tiles"></div>
+    <div class="card"><h3>Spend and ROAS by period</h3><div id="p-trend"></div></div>
+    <div class="card tablebox" id="p-table"></div>
+    <div class="card"><h3>Notes</h3><div id="p-notes"></div></div>
+  </section>
+
+  <section id="segments">
+    <div class="sechead"><h2>Audience segments</h2><span class="meta" id="s-meta"></span></div>
+    <div class="lead" id="s-lead"></div>
+    <div class="tiles" id="s-tiles"></div>
+    <div class="card"><h3>Where each campaign's money goes</h3><div id="s-mix"></div>
+      <div class="legend"><span><i class="sw sw-new"></i>New audience</span><span><i class="sw sw-eng"></i>Engaged audience</span><span><i class="sw sw-exi"></i>Existing customers</span><span><i class="sw sw-oth"></i>Other</span></div></div>
+    <div class="controls"><label>Show by <select id="s-level"><option value="s">Ad set</option><option value="c">Campaign</option><option value="ad">Ad</option><option value="p">Product</option><option value="th">Product theme</option><option value="f">Creative format</option></select></label>
+      <label>Segment <select id="s-seg"><option value="">All three</option><option>New audience</option><option>Engaged audience</option><option>Existing customers</option></select></label></div>
+    <div class="card tablebox" id="s-table"></div>
+    <div class="card"><h3>About these segments</h3><div id="s-notes"></div></div>
+  </section>
+  <section id="weekly">
+    <div class="sechead"><h2>Week in review</h2><span class="meta" id="w-meta"></span></div>
+    <div class="card lead" id="w-lead"></div>
+    <div class="tiles" id="w-tiles"></div>
+    <div class="card tablebox" id="w-table"></div>
+    <div class="grid2">
+      <div class="card"><h3>Spend by advertised product</h3><div id="w-bars"></div></div>
+      <div class="card"><h3>Where the spend can be traced</h3><div id="w-split"></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Ads improving and declining</h3><div id="w-trends"></div></div>
+      <div class="card"><h3>Landing-page-view rate against peers</h3><div id="w-bench"></div></div>
+    </div>
+    <div class="card tablebox" id="w-cands"></div>
+    <div class="card tablebox" id="w-aud"></div>
+    <div class="card" id="w-audnotes"><h3>About the audience split</h3><div id="w-audn"></div></div>
+    <div class="card"><h3>Notes</h3><div id="w-notes"></div></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+  function num(n){return n==null?"–":Number(n).toLocaleString("en-IN")}
+  function rs(n){return n==null?"–":"₹"+num(Math.round(n))}
+  function day(s){if(!s)return"";var d=new Date(s.length>10?s:s+"T00:00:00");return isNaN(d)?s:d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}
+  function stamp(s){if(!s)return"";var d=new Date(s);return isNaN(d)?s:d.toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}
+  function pill(v){var k=String(v||"").toLowerCase();var c=k.indexOf("stop")===0?"p-stop":k.indexOf("hold")===0?"p-hold":k.indexOf("cut")===0?"p-cut":k.indexOf("watch")===0?"p-watch":"p-keep";return el("span","pill "+c,v||"–")}
+  function list(box,items,emptyText){box.textContent="";if(!items||!items.length){box.appendChild(el("p","empty",emptyText));return}var u=el("ul","plain");items.forEach(function(t){u.appendChild(el("li",null,t))});box.appendChild(u)}
+  function tile(box,big,label,small,cls){var t=el("div","card tile");var b=el("b",cls||null,big);t.appendChild(b);t.appendChild(el("span",null,label));if(small)t.appendChild(el("small",null,small));box.appendChild(t)}
+  function change(cur,prev){if(cur==null||prev==null||!prev)return null;var p=Math.round(100*(cur-prev)/prev);return (p>=0?"+":"")+p+"% on the prior period"}
+  function table(box,title,cols,rows,emptyText){box.textContent="";var h=el("h3",null,title);h.style.padding="14px 16px 0";box.appendChild(h);
+    if(!rows||!rows.length){var p=el("p","empty",emptyText);p.style.padding="0 16px 14px";box.appendChild(p);return}
+    var t=el("table"),th=el("thead"),tr=el("tr");cols.forEach(function(c){tr.appendChild(el("th",c.l?"l":null,c.h))});th.appendChild(tr);t.appendChild(th);
+    var tb=el("tbody");rows.forEach(function(r){var x=el("tr");cols.forEach(function(c){var td=el("td",c.l?(c.w?"l wrap":"l"):null);td.setAttribute("data-label",c.h);var v=c.f(r);if(v instanceof Node)td.appendChild(v);else td.textContent=v==null?"–":v;x.appendChild(td)});tb.appendChild(x)});t.appendChild(tb);box.appendChild(t)}
+  function nameCell(p,ads){var d=el("div","name",p);if(ads&&ads.length)d.appendChild(el("div","sub",ads.join(", ")));return d}
+  function stockText(r){return num(r.stock)+" "+(r.unit||"")}
+
+  function daily(d){
+    var hide=function(on){["d-tiles","d-table","d-grid","d-notescard"].forEach(function(i){$(i).style.display=on?"none":""})};
+    if(!d||!d.day){$("d-meta").textContent="Waiting for the first run";hide(true);
+      var l=$("d-lead");l.textContent="";var sb=el("div","statusbox");sb.appendChild(el("span","dot"));var tx=el("div");tx.appendChild(el("div","big","First check runs tomorrow at 8:43 AM IST"));tx.appendChild(el("div","sub","Every morning this section shows which advertised products are out of stock or still in production, what was spent on them yesterday, and what changed overnight."));sb.appendChild(tx);l.appendChild(sb);return}
+    hide(false);
+    $("d-meta").textContent=day(d.day)+" against "+day(d.prev_day)+" · updated "+stamp(d.updated);
+    var al=d.alerts||[],risk=al.filter(function(a){return /^(stop|hold)/i.test(a.level||"")}),rsp=risk.reduce(function(s,a){return s+(a.spend||0)},0);
+    var l=$("d-lead");l.textContent="";
+    (d.headline&&d.headline.length?d.headline:[risk.length?rs(rsp)+" was spent yesterday on "+risk.length+" products that are nearly out of stock or still in production.":"No stock alerts today."]).forEach(function(t){l.appendChild(el("p",null,t))});
+    var tl=$("d-tiles");tl.textContent="";var t=d.totals||{};
+    tile(tl,rs(t.spend),"Spend yesterday",change(t.spend,t.prev_spend));
+    tile(tl,rs(rsp),"On Stop and Hold products",risk.length+" alerts",rsp?"down":null);
+    tile(tl,num(d.ok_count),"Advertised products with healthy stock");
+    tile(tl,rs(d.mapped_spend),"Tied to a single product",d.unmapped_spend!=null?rs(d.unmapped_spend)+" in catalogue and collection ads":null);
+    table($("d-table"),"Alerts",[
+      {h:"Product",l:1,f:function(r){return nameCell(r.product,r.ad?[r.ad]:r.ads)}},{h:"Alert",l:1,f:function(r){return pill(r.level)}},{h:"Why",l:1,w:1,f:function(r){return r.reason}},
+      {h:"Spend yesterday",f:function(r){return rs(r.spend)}},{h:"Day before",f:function(r){return rs(r.prev_spend)}},{h:"Purchases",f:function(r){return num(r.purchases)}},
+      {h:"On hand",f:stockText},{h:"In production",f:function(r){return r.production?num(r.production):"–"}}],al,"No stock alerts today.");
+    list($("d-changes"),d.changes,"No ads started or stopped, and no product changed alert level.");
+    var hb=$("d-history");hb.textContent="";var hist=(d.history||[]).slice(-14);
+    if(!hist.length)hb.appendChild(el("p","empty","Builds up one day at a time."));else{var mx=Math.max.apply(null,hist.map(function(h){return h.risk_spend||0}).concat([1]));var bw=el("div","bars");
+      hist.forEach(function(h){var r=el("div","barrow");r.appendChild(el("span","lab",day(h.day)));var tk=el("div","track"),b=el("div","bar risk");b.style.width=Math.max(1,100*(h.risk_spend||0)/mx)+"%";tk.appendChild(b);r.appendChild(tk);r.appendChild(el("span","val",rs(h.risk_spend)+" · "+num(h.alerts)+" alerts"));bw.appendChild(r)});hb.appendChild(bw)}
+    list($("d-notes"),d.notes,"No notes.");
+  }
+
+  function weekly(w){
+    if(!w||!w.period){$("w-meta").textContent="No run yet";return}
+    $("w-meta").textContent=day(w.period.from)+" to "+day(w.period.to)+(w.prior?" against "+day(w.prior.from)+" to "+day(w.prior.to):"")+" · updated "+stamp(w.updated);
+    var l=$("w-lead");l.textContent="";(w.findings||[]).forEach(function(t){l.appendChild(el("p",null,t))});
+    var tl=$("w-tiles");tl.textContent="";var t=w.totals||{},ps=w.products||[];
+    var risk=ps.filter(function(p){return /^(stop|hold)/i.test(p.verdict||"")}),rsp=risk.reduce(function(s,p){return s+(p.spend||0)},0);
+    tile(tl,rs(t.spend),"Ad spend, 7 days",change(t.spend,t.prev_spend));
+    tile(tl,num(t.purchases),"Website purchases",change(t.purchases,t.prev_purchases));
+    if(t.value!=null)tile(tl,rs(t.value),"Website purchase value",change(t.value,t.prev_value));
+    tile(tl,rs(rsp),"On Stop and Hold products",risk.length+" products",rsp?"down":null);
+    table($("w-table"),"Advertised products",[
+      {h:"Product",l:1,f:function(r){return nameCell(r.product,r.ads)}},{h:"Verdict",l:1,f:function(r){return pill(r.verdict)}},{h:"Why",l:1,w:1,f:function(r){return r.reason}},
+      {h:"Spend",f:function(r){return rs(r.spend)}},{h:"Prior week",f:function(r){return rs(r.prev_spend)}},{h:"Meta ROAS",f:function(r){return r.roas==null?(r.purchases?"–":"none"):Number(r.roas).toFixed(2)}},{h:"Purchases",f:function(r){return num(r.purchases)}},
+      {h:"On hand",f:stockText},{h:"Top / bottom",f:function(r){return r.top==null?"–":(r.bottom==null?num(r.top):num(r.top)+" / "+num(r.bottom))}},{h:"In production",f:function(r){return r.production?num(r.production):"–"}},{h:"Days cover",f:function(r){return r.cover==null?"–":(r.cover>365?"365+":num(r.cover))}}],ps,"No single-product ads ran this week.");
+    var bb=$("w-bars");bb.textContent="";if(!ps.length)bb.appendChild(el("p","empty","No single-product ads ran this week."));else{
+      var top=ps.slice().sort(function(a,b){return (b.spend||0)-(a.spend||0)}).slice(0,12),mx=Math.max.apply(null,top.map(function(p){return Math.max(p.spend||0,p.prev_spend||0)}).concat([1])),bw=el("div","bars");
+      top.forEach(function(p){var r=el("div","barrow");var lab=el("span","lab",p.product);lab.title=p.product;r.appendChild(lab);var tk=el("div","track"),b=el("div","bar"+(/^(stop|hold)/i.test(p.verdict||"")?" risk":""));b.style.width=Math.max(1,100*(p.spend||0)/mx)+"%";tk.appendChild(b);
+        if(p.prev_spend!=null){var b2=el("div","bar prev");b2.style.width=Math.max(1,100*p.prev_spend/mx)+"%";tk.appendChild(b2)}r.appendChild(tk);r.appendChild(el("span","val",rs(p.spend)));bw.appendChild(r)});bb.appendChild(bw);
+      var lg=el("div","legend");[["var(--accent)","This week"],["var(--stop)","This week, Stop or Hold"],["var(--accent-soft)","Prior week"]].forEach(function(x){var s=el("span");var i=el("i");i.style.background=x[0];s.appendChild(i);s.appendChild(document.createTextNode(x[1]));lg.appendChild(s)});bb.appendChild(lg)}
+    var sp=$("w-split");sp.textContent="";var m=w.mapped_spend||0,u=w.unmapped_spend||0,tt=Math.max(m+u,1),bw2=el("div","bars");
+    [["Single-product ads",m,""],["Catalogue and collection ads",u," prev"]].forEach(function(x){var r=el("div","barrow");r.appendChild(el("span","lab",x[0]));var tk=el("div","track"),b=el("div","bar"+x[2]);b.style.width=Math.max(1,100*x[1]/tt)+"%";b.style.height="9px";tk.appendChild(b);r.appendChild(tk);r.appendChild(el("span","val",rs(x[1])+" · "+Math.round(100*x[1]/tt)+"%"));bw2.appendChild(r)});sp.appendChild(bw2);
+    sp.appendChild(el("p","sub","Only single-product ads can be checked against stock. Catalogue and collection ads pick products automatically."));
+    var tr=$("w-trends");tr.textContent="";if(!(w.trends||[]).length)tr.appendChild(el("p","empty","No trend data this week."));else{var u2=el("ul","plain");w.trends.forEach(function(x){var li=el("li");var b=el("b",/improv/i.test(x.direction)?"up":"down",(/improv/i.test(x.direction)?"Improving: ":"Declining: "));li.appendChild(b);li.appendChild(document.createTextNode(x.ad+". "+x.note));u2.appendChild(li)});tr.appendChild(u2)}
+    var be=$("w-bench");be.textContent="";if(!(w.benchmark||[]).length)be.appendChild(el("p","empty","No benchmark returned this week."));else{var bw3=el("div","bars");
+      w.benchmark.forEach(function(x){var r=el("div","barrow");var lab=el("span","lab",x.adset);lab.title=x.adset;r.appendChild(lab);var tk=el("div","track"),b=el("div","bar"+(x.lpv_rate<0.8*x.peer_median?" risk":""));b.style.width=Math.min(100,x.lpv_rate)+"%";tk.appendChild(b);var b2=el("div","bar prev");b2.style.width=Math.min(100,x.peer_median)+"%";tk.appendChild(b2);r.appendChild(tk);r.appendChild(el("span","val",x.lpv_rate+"% vs "+x.peer_median+"%"));bw3.appendChild(r)});be.appendChild(bw3);
+      var lg2=el("div","legend");[["var(--accent)","This ad set"],["var(--stop)","More than 20% below peers"],["var(--accent-soft)","Peer median"]].forEach(function(x){var s=el("span");var i=el("i");i.style.background=x[0];s.appendChild(i);s.appendChild(document.createTextNode(x[1]));lg2.appendChild(s)});be.appendChild(lg2)}
+    table($("w-cands"),"Candidates to push that have no single-product ad",[
+      {h:"Product",l:1,f:function(r){return el("div","name",r.product)}},{h:"Sold, 30 days",f:function(r){return num(r.sold30)}},{h:"On hand",f:stockText},{h:"Days cover",f:function(r){return r.cover==null?"–":(r.cover>365?"365+":num(r.cover))}}],w.candidates,"No candidates this week.");
+    list($("w-notes"),w.notes,"No notes.");
+  }
+  function perf(P){
+    if(!P||!P.rows||!P.rows.length){$("p-meta").textContent="No data yet";return}
+    var rows=P.rows,ads=P.ads||{},prods=P.products||{};
+    var blocks={};rows.forEach(function(r){blocks[r[0]+"|"+r[1]]=[r[0],r[1]]});
+    var bl=Object.keys(blocks).sort().map(function(k){return blocks[k]});
+    var minD=bl[0][0],maxD=bl[bl.length-1][1];
+    var st={from:bl[bl.length-1][0],to:maxD,group:"product",sort:"spend",dir:"desc"};
+    var fi=$("p-from"),ti=$("p-to");fi.min=ti.min=minD;fi.max=ti.max=maxD;
+    function addDays(s,n){var d=new Date(s+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+    function span(a,b){return Math.round((new Date(b+"T00:00:00Z")-new Date(a+"T00:00:00Z"))/864e5)+1}
+    function pick(a,b){return rows.filter(function(r){return r[0]>=a&&r[1]<=b})}
+    function agg(rs,keyFn){var m={};rs.forEach(function(r){var a=ads[r[2]]||{n:r[2],c:"",k:"catalogue"};var k=keyFn(a,r);if(k==null)return;var o=m[k]||(m[k]={key:k,spend:0,imp:0,clk:0,lpv:0,atc:0,ic:0,pur:0,val:0,omni:true,ads:{}});
+      o.spend+=r[3];o.imp+=r[4];o.clk+=r[5];o.lpv+=r[6];o.atc+=r[7];o.ic+=r[8];o.pur+=r[9];o.val+=r[10];if(a.k!=="omni")o.omni=false;o.ads[a.n]=1});return m}
+    function keyFn(g){return g==="ad"?function(a){return a.n+(a.s?" · "+a.s:"")}:g==="campaign"?function(a){return a.c||"(no campaign)"}:g==="adset"?function(a){return a.s||"(no ad set)"}:function(a){return a.p||(a.k==="omni"?"Store-visit (OMNI) ads":"Catalogue and collection ads")}}
+    function roas(o){return o&&o.spend>0&&!o.omni?o.val/o.spend:null}
+    function tot(rs){var t={spend:0,pur:0,val:0,clk:0,lpv:0,vs:0,vv:0};rs.forEach(function(r){t.spend+=r[3];t.pur+=r[9];t.val+=r[10];t.clk+=r[5];t.lpv+=r[6];if((ads[r[2]]||{}).k!=="omni"){t.vs+=r[3];t.vv+=r[10]}});t.roas=t.vs?t.vv/t.vs:null;return t}
+    function presets(){var box=$("p-presets");box.textContent="";var list=[];
+      var days=bl.filter(function(b){return b[0]===b[1]});
+      if(days.length){list.push(["Latest day",days[days.length-1][0],days[days.length-1][1]])}
+      bl.filter(function(b){return b[0]!==b[1]}).slice(-4).forEach(function(b){list.push([day(b[0]).replace(/ \d{4}$/,"")+" to "+day(b[1]).replace(/ \d{4}$/,""),b[0],b[1]])});
+      if(span(minD,maxD)>14)list.push(["Last 14 days",addDays(maxD,-13)<minD?minD:addDays(maxD,-13),maxD]);
+      list.push(["All dates",minD,maxD]);
+      list.forEach(function(p){var b=el("button","chip",p[0]);b.type="button";b.setAttribute("aria-pressed",st.from===p[1]&&st.to===p[2]?"true":"false");b.addEventListener("click",function(){st.from=p[1];st.to=p[2];draw()});box.appendChild(b)})}
+    function draw(){
+      fi.value=st.from;ti.value=st.to;presets();
+      var cur=pick(st.from,st.to),n=span(st.from,st.to),pf=addDays(st.from,-n),pt=addDays(st.from,-1),prev=pick(pf,pt);
+      var used={};cur.forEach(function(r){used[r[0]+"|"+r[1]]=1});
+      var covered=Object.keys(used).reduce(function(s,k){var b=k.split("|");return s+span(b[0],b[1])},0);
+      $("p-meta").textContent=day(st.from)+" to "+day(st.to)+" · data for "+covered+" of "+n+" days · updated "+stamp(P.updated);
+      var T=tot(cur),Tp=tot(prev),hasPrev=prev.length>0;
+      var tl=$("p-tiles");tl.textContent="";
+      tile(tl,rs(T.spend),"Ad spend",hasPrev?change(T.spend,Tp.spend):"no earlier data to compare");
+      tile(tl,num(T.pur),"Website purchases",hasPrev?change(T.pur,Tp.pur):null);
+      tile(tl,rs(T.val),"Website purchase value",hasPrev?change(T.val,Tp.val):null);
+      tile(tl,T.roas==null?"–":T.roas.toFixed(2),"Meta website ROAS, excluding store-visit ads",hasPrev&&Tp.roas!=null?"was "+Tp.roas.toFixed(2)+" in the prior "+n+" days":null,hasPrev&&Tp.roas!=null&&T.roas!=null?(T.roas>=Tp.roas?"up":"down"):null);
+      tile(tl,T.clk?Math.round(100*T.lpv/T.clk)+"%":"–","Clicks that reached a loaded page",hasPrev&&Tp.clk?"was "+Math.round(100*Tp.lpv/Tp.clk)+"%":null);
+      var m=agg(cur,keyFn(st.group)),mp=agg(prev,keyFn(st.group));
+      var list=Object.keys(m).map(function(k){var o=m[k],p=mp[k];o.roas=roas(o);o.proas=roas(p);o.pspend=p?p.spend:null;o.droas=(o.roas!=null&&o.proas!=null)?o.roas-o.proas:null;o.lpvr=o.clk?100*o.lpv/o.clk:null;o.cpa=o.pur?o.spend/o.pur:null;return o});
+      var ld=$("p-lead");ld.textContent="";var real=list.filter(function(o){return !o.omni&&o.spend>=5000&&o.roas!=null});
+      if(!cur.length){ld.appendChild(el("p",null,"No data is stored for these dates. Pick a range inside "+day(minD)+" to "+day(maxD)+"."))}
+      else{var best=real.slice().sort(function(a,b){return b.roas-a.roas})[0],worst=real.slice().sort(function(a,b){return a.roas-b.roas})[0];
+        var movers=real.filter(function(o){return o.droas!=null}),upm=movers.slice().sort(function(a,b){return b.droas-a.droas})[0],dnm=movers.slice().sort(function(a,b){return a.droas-b.droas})[0];
+        if(best)ld.appendChild(el("p",null,"Best return: "+best.key+" at "+best.roas.toFixed(2)+" ROAS on "+rs(best.spend)+"."));
+        if(worst&&worst!==best)ld.appendChild(el("p",null,"Weakest return: "+worst.key+" at "+worst.roas.toFixed(2)+" ROAS on "+rs(worst.spend)+"."));
+        if(upm&&upm.droas>0)ld.appendChild(el("p",null,"Biggest improvement on the prior "+n+" days: "+upm.key+", ROAS "+upm.proas.toFixed(2)+" to "+upm.roas.toFixed(2)+"."));
+        if(dnm&&dnm.droas<0&&dnm!==upm)ld.appendChild(el("p",null,"Biggest drop: "+dnm.key+", ROAS "+dnm.proas.toFixed(2)+" to "+dnm.roas.toFixed(2)+"."));
+        if(!best)ld.appendChild(el("p",null,"Nothing in this range spent ₹5,000 or more with purchases, so no best or weakest is called."));
+        ld.appendChild(el("p","sub","Best, weakest and movers only count rows with ₹5,000 or more in spend."))}
+      var tb=$("p-trend");tb.textContent="";var inR=bl.filter(function(b){return b[0]>=st.from&&b[1]<=st.to});
+      if(!inR.length)tb.appendChild(el("p","empty","No periods in this range."));else{var per=inR.map(function(b){var t=tot(pick(b[0],b[1]));t.b=b;t.daily=t.spend/span(b[0],b[1]);return t}),mx=Math.max.apply(null,per.map(function(t){return t.daily}).concat([1])),bw=el("div","bars");
+        per.forEach(function(t){var r=el("div","barrow");r.appendChild(el("span","lab",t.b[0]===t.b[1]?day(t.b[0]):day(t.b[0]).replace(/ \d{4}$/,"")+" to "+day(t.b[1])));var tk=el("div","track"),b=el("div","bar");b.style.width=Math.max(1,100*t.daily/mx)+"%";tk.appendChild(b);r.appendChild(tk);r.appendChild(el("span","val",rs(t.daily)+" a day · ROAS "+(t.roas==null?"–":t.roas.toFixed(2))+" · "+num(t.pur)+" purchases"));bw.appendChild(r)});tb.appendChild(bw)}
+      var k=st.sort,d=st.dir==="desc"?-1:1;
+      list.sort(function(a,b){var x=a[k],y=b[k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;if(typeof x==="string")return d*x.localeCompare(y);return d*(x-y)});
+      var cols=[{h:st.group==="ad"?"Ad":st.group==="campaign"?"Campaign":st.group==="adset"?"Ad set":"Product",l:1,s:"key",f:function(r){return nameCell(r.key,st.group==="product"?Object.keys(r.ads).slice(0,3):null)}},
+        {h:"Spend",s:"spend",f:function(r){return rs(r.spend)}},{h:"Prior spend",s:"pspend",f:function(r){return rs(r.pspend)}},{h:"Purchases",s:"pur",f:function(r){return num(r.pur)}},{h:"Purchase value",s:"val",f:function(r){return rs(r.val)}},
+        {h:"ROAS",s:"roas",f:function(r){return r.omni?"store visits":r.roas==null?"–":(r.pur?r.roas.toFixed(2):"none")}},{h:"Prior ROAS",s:"proas",f:function(r){return r.proas==null?"–":r.proas.toFixed(2)}},
+        {h:"Change",s:"droas",f:function(r){if(r.droas==null)return "–";return el("span",r.droas>=0?"up":"down",(r.droas>=0?"+":"")+r.droas.toFixed(2))}},
+        {h:"Cost per purchase",s:"cpa",f:function(r){return rs(r.cpa)}},{h:"Loaded page rate",s:"lpvr",f:function(r){return r.lpvr==null?"–":Math.round(r.lpvr)+"%"}},{h:"Add to cart",s:"atc",f:function(r){return num(r.atc)}}];
+      if(st.group==="product")cols.push({h:"Stock now",f:function(r){var p=prods[r.key];return p?num(p.stock)+" "+p.unit+(p.production?" (+"+num(p.production)+" in production)":""):"–"}},{h:"Stock verdict",l:1,f:function(r){var p=prods[r.key];return p&&p.verdict?pill(p.verdict):"–"}});
+      table($("p-table"),"By "+(st.group==="adset"?"ad set":st.group),cols,list,"No data is stored for these dates.");
+      var ths=$("p-table").querySelectorAll("thead th");cols.forEach(function(c,i){if(!c.s||!ths[i])return;var b=el("button","sortbtn",c.h);b.type="button";if(st.sort===c.s)b.setAttribute("data-dir",st.dir);b.addEventListener("click",function(){if(st.sort===c.s)st.dir=st.dir==="desc"?"asc":"desc";else{st.sort=c.s;st.dir=c.s==="key"?"asc":"desc"}draw()});ths[i].textContent="";ths[i].appendChild(b)});
+      var ss=$("p-sort");ss.textContent="";cols.forEach(function(c){if(!c.s)return;var o=el("option",null,c.h+(c.s==="key"?", A to Z":", highest first"));o.value=c.s;if(st.sort===c.s)o.selected=true;ss.appendChild(o)});
+      list2($("p-notes"),P.notes);
+    }
+    function list2(box,items){list(box,items,"No notes.")}
+    fi.addEventListener("change",function(){if(fi.value){st.from=fi.value;if(st.to<st.from)st.to=st.from;draw()}});
+    ti.addEventListener("change",function(){if(ti.value){st.to=ti.value;if(st.from>st.to)st.from=st.to;draw()}});
+    $("p-sort").addEventListener("change",function(e){st.sort=e.target.value;st.dir=st.sort==="key"?"asc":"desc";draw()});
+    $("p-group").addEventListener("change",function(e){st.group=e.target.value;draw()});
+    draw();
+  }
+  function aud(A){
+    if(!A||!A.rows||!A.rows.length){$("w-aud").style.display="none";$("w-audnotes").style.display="none";return}
+    var tot=A.rows.reduce(function(s,r){return s+r.spend},0),mx=Math.max.apply(null,A.rows.map(function(r){return r.spend}));
+    table($("w-aud"),"Audience by age and gender, "+day(A.period.from)+" to "+day(A.period.to),[
+      {h:"Age",l:1,f:function(r){return el("div","name",r.age)}},{h:"Gender",l:1,f:function(r){return r.gender}},
+      {h:"Spend",f:function(r){return rs(r.spend)}},{h:"Share of spend",f:function(r){var w=el("div","score");w.appendChild(el("span",null,Math.round(100*r.spend/tot)+"%"));var b=el("span","mini"),i=el("i");i.style.width=Math.max(2,100*r.spend/mx)+"%";b.appendChild(i);w.appendChild(b);return w}},
+      {h:"Purchases",f:function(r){return num(r.purchases)}},{h:"Purchase value",f:function(r){return rs(r.value)}},
+      {h:"ROAS",f:function(r){if(!r.purchases)return "none";var x=r.value/r.spend;return el("span",x>=2.5?"up":(x<1.5?"down":null),x.toFixed(2))}},
+      {h:"Cost per purchase",f:function(r){return r.purchases?rs(r.spend/r.purchases):"–"}}],A.rows,"No audience data.");
+    list($("w-audn"),A.notes,"");
+  }
+  function segs(S){
+    var sec=$("segments");if(!S||!S.rows||!S.rows.length){sec.style.display="none";return}
+    var SG=["New audience","Engaged audience","Existing customers"],CL={"New audience":"g-new","Engaged audience":"g-eng","Existing customers":"g-exi"};
+    var short=function(c){return String(c||"").replace(/^SHOP_\d+_adyogi_/,"").replace(/^Conversions_/,"")};
+    var add=function(a,r){["spend","imp","clk","lpv","atc","co","pur","val"].forEach(function(k){a[k]=(a[k]||0)+(r[k]||0)});return a};
+    var by=function(rows,fn){var m={};rows.forEach(function(r){var k=fn(r);m[k]=add(m[k]||{},r)});return m};
+    var roas=function(a){return a&&a.spend?a.val/a.spend:null};
+    var rcell=function(a){if(!a||!a.spend)return "–";if(!a.pur)return el("span","down","none");var x=roas(a);return el("span",x>=2.5?"up":(x<1.5?"down":null),x.toFixed(2))};
+    var pct=function(a,b){return b?Math.round(100*a/b)+"%":"–"};
+    $("s-meta").textContent=day(S.period.from)+" to "+day(S.period.to)+" against "+day(S.prior.from)+" to "+day(S.prior.to);
+    var tot=S.rows.reduce(function(s,r){return s+r.spend},0),cur=by(S.rows,function(r){return r.seg}),prv=by(S.prev||[],function(r){return r.seg});
+    var ld=$("s-lead");ld.textContent="";var n=cur["New audience"]||{spend:0},x=cur["Existing customers"]||{spend:0};
+    ld.appendChild(el("p",null,pct(x.spend,tot)+" of spend reached existing customers and "+pct(n.spend,tot)+" reached new people. New audience ROAS is "+(roas(n)==null?"–":roas(n).toFixed(2))+(roas(prv["New audience"])!=null?", against "+roas(prv["New audience"]).toFixed(2)+" the week before.":".")));
+    var tl=$("s-tiles");tl.textContent="";SG.forEach(function(g){var a=cur[g]||{spend:0,pur:0,val:0},p=prv[g];
+      tile(tl,rs(a.spend),g,pct(a.spend,tot)+" of spend · ROAS "+(roas(a)==null?"–":roas(a).toFixed(2))+(p&&roas(p)!=null?" (was "+roas(p).toFixed(2)+")":"")+" · "+num(a.pur)+" purchases",roas(a)!=null&&roas(a)<1.5?"down":null)});
+    var mix=$("s-mix");mix.textContent="";var cm={};S.rows.forEach(function(r){var c=cm[r.c]=cm[r.c]||{t:0};c.t+=r.spend;c[r.seg]=(c[r.seg]||0)+r.spend});
+    Object.keys(cm).sort(function(a,b){return cm[b].t-cm[a].t}).forEach(function(c){var o=cm[c],row=el("div","mixrow");row.appendChild(el("span","lab",short(c)));var st=el("div","stack"),oth=o.t;
+      SG.forEach(function(g){var v=o[g]||0;oth-=v;if(v>0){var i=el("i",CL[g]);i.style.width=(100*v/o.t)+"%";i.title=g+" "+pct(v,o.t);st.appendChild(i)}});
+      if(oth>0){var i2=el("i","g-oth");i2.style.width=(100*oth/o.t)+"%";st.appendChild(i2)}
+      row.appendChild(st);row.appendChild(el("span","val",rs(o.t)+" · new "+pct(o["New audience"]||0,o.t)+" · existing "+pct(o["Existing customers"]||0,o.t)));mix.appendChild(row)});
+    var stt={lv:"s",seg:""},ADL={ad:"ad",p:"product",th:"product theme",f:"creative format",s:"ad set",c:"campaign"},HD={ad:"Ad",p:"Product",th:"Product theme",f:"Creative format",s:"Ad set",c:"Campaign"};
+    if(!S.ads||!S.ads.length){["ad","p","th","f"].forEach(function(v){var o=$("s-level").querySelector('option[value="'+v+'"]');if(o)o.remove()})}
+    function draw(){
+      var lv=stt.lv,adl=lv!=="s"&&lv!=="c",src=adl?(S.ads||[]):S.rows;if(lv==="p")src=src.filter(function(r){return r.p});
+      var kf=function(r){return lv==="c"?r.c:lv==="s"?r.c+" || "+r.s:lv==="ad"?r.ad+" || "+r.s:lv==="p"?r.p:lv==="th"?r.th:r.f};
+      var nm=function(r){return lv==="c"?short(r.c):lv==="s"?r.s:lv==="ad"?r.ad:lv==="p"?r.p:lv==="th"?r.th:r.f};
+      var sb=function(r){return lv==="s"?short(r.c):lv==="ad"?[r.f,r.th,r.s].join(" · "):lv==="p"?[r.ty,r.f].filter(Boolean).join(" · "):null};
+      var grp={},pg={};
+      src.forEach(function(r){if(SG.indexOf(r.seg)<0)return;var k=kf(r);var g=grp[k]=grp[k]||{k:k,name:nm(r),sub:sb(r),t:{},seg:{}};add(g.t,r);g.seg[r.seg]=add(g.seg[r.seg]||{},r)});
+      if(!adl)(S.prev||[]).forEach(function(r){var k=kf(r)+" || "+r.seg;pg[k]=add(pg[k]||{},r)});
+      var out=[];Object.keys(grp).map(function(k){return grp[k]}).sort(function(a,b){return b.t.spend-a.t.spend}).forEach(function(g){
+        if(!stt.seg)out.push({head:1,name:g.name,sub:g.sub,a:g.t,tot:g.t.spend});
+        SG.forEach(function(sg){if(stt.seg&&stt.seg!==sg)return;var a=g.seg[sg];if(!a)return;out.push({seg:sg,name:stt.seg?g.name:sg,sub:stt.seg?g.sub:null,a:a,tot:g.t.spend,p:pg[g.k+" || "+sg]})})});
+      if(stt.seg)out.sort(function(a,b){return b.a.spend-a.a.spend});
+      var cols=[
+        {h:stt.seg?HD[lv]:"Segment",l:1,f:function(r){var d=el("div","name");if(r.seg&&!stt.seg){d.style.fontWeight="500";d.style.paddingLeft="14px";d.appendChild(el("i","segdot "+CL[r.seg]))}d.appendChild(document.createTextNode(r.name));if(r.sub)d.appendChild(el("div","sub",r.sub));return d}},
+        {h:"Spend",f:function(r){return rs(r.a.spend)}},
+        {h:"Share",f:function(r){return r.head?"100%":pct(r.a.spend,r.tot)}},
+        {h:"Click rate",f:function(r){return r.a.imp?(100*r.a.clk/r.a.imp).toFixed(2)+"%":"–"}},
+        {h:"Cost per landing view",f:function(r){return r.a.lpv?rs(r.a.spend/r.a.lpv):"–"}},
+        {h:"Cart rate",f:function(r){return r.a.lpv?(100*r.a.atc/r.a.lpv).toFixed(1)+"%":"–"}},
+        {h:"Purchases",f:function(r){return num(r.a.pur)}},
+        {h:"Purchase value",f:function(r){return rs(r.a.val)}},
+        {h:"ROAS",f:function(r){return rcell(r.a)}},
+        {h:"Cost per purchase",f:function(r){return r.a.pur?rs(r.a.spend/r.a.pur):"–"}}];
+      if(!adl)cols.splice(3,0,{h:"Prior week",f:function(r){return r.head?"–":(r.p?rs(r.p.spend):"–")}}),cols.splice(10,0,{h:"ROAS prior",f:function(r){return r.head||!r.p||!r.p.spend?"–":(r.p.pur?roas(r.p).toFixed(2):"none")}});
+      table($("s-table"),(stt.seg||"Audience segments")+" by "+ADL[lv],cols,out,lv==="p"?"No single-product ads in this period.":"No segment data.");
+      var trs=$("s-table").querySelectorAll("tbody tr");out.forEach(function(r,i){if(r.head&&trs[i])trs[i].className="grp"});
+    }
+    $("s-level").addEventListener("change",function(e){stt.lv=e.target.value;draw()});
+    $("s-seg").addEventListener("change",function(e){stt.seg=e.target.value;draw()});
+    draw();list($("s-notes"),S.notes,"");
+  }
+  function load(f,fn){window.MulmulDocs.get(f).then(fn).catch(function(){fn(null)})}
+  load("daily.json",daily);load("periods.json",perf);load("audience.json",aud);load("segments.json",segs);load("weekly.json",weekly);
+})();
+</script>
+</body>
+</html>
