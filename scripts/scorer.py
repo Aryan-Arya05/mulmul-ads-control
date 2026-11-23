@@ -6,14 +6,15 @@ stock-lookup database), pairs tops with bottoms, scores every product, adds Meta
 exposure, and saves the result as the "products" document of the Ads Control dashboard.
 
 Environment:
-  SHOPIFY_ACCESS_TOKEN  Admin API token (needs read_products and read_reports)
+  SHOPIFY_ACCESS_TOKEN  Admin API token (needs read_products and read_reports), or instead:
+  SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET  credentials of an app made in the Shopify Dev Dashboard
   DASH_INGEST_TOKEN     write token for the dashboard database
   SHOPIFY_STORE         optional, defaults to shopmulmul.myshopify.com
 
 Run with --fixtures DIR to compute from saved input files instead of the live APIs
 (used for testing), and --out FILE to write the result to a file instead of saving it.
 """
-import argparse, collections, datetime, difflib, json, math, os, re, statistics, sys, time, urllib.error, urllib.request
+import argparse, collections, datetime, difflib, json, math, os, re, statistics, sys, time, urllib.error, urllib.parse, urllib.request
 
 STORE = os.environ.get("SHOPIFY_STORE", "shopmulmul.myshopify.com")
 API_VERSION = "2026-10"
@@ -46,10 +47,32 @@ def http_json(url, body=None, headers=None, tries=4):
             raise SystemExit(f"Could not reach {url.split('?')[0]}: {e}")
 
 
+_token = None
+
+
+def shopify_token():
+    """Use a stored Admin API token, or swap a Dev Dashboard app's client ID and secret for a 24-hour token."""
+    global _token
+    if _token:
+        return _token
+    _token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+    cid, secret = os.environ.get("SHOPIFY_CLIENT_ID"), os.environ.get("SHOPIFY_CLIENT_SECRET")
+    if not _token and cid and secret:
+        body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": cid, "client_secret": secret}).encode()
+        req = urllib.request.Request(f"https://{STORE}/admin/oauth/access_token", data=body,
+                                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                _token = json.loads(r.read().decode()).get("access_token")
+        except urllib.error.HTTPError as e:
+            raise SystemExit(f"Shopify did not issue a token (HTTP {e.code}): {e.read().decode()[:400]}")
+    if not _token:
+        raise SystemExit("Set SHOPIFY_ACCESS_TOKEN, or SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET.")
+    return _token
+
+
 def gql(query, variables=None):
-    token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
-    if not token:
-        raise SystemExit("SHOPIFY_ACCESS_TOKEN is not set.")
+    token = shopify_token()
     url = f"https://{STORE}/admin/api/{API_VERSION}/graphql.json"
     for attempt in range(8):
         out = http_json(url, {"query": query, "variables": variables or {}}, {"X-Shopify-Access-Token": token})
