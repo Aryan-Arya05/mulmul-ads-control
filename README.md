@@ -4,7 +4,7 @@ Internal dashboard for Shop Mulmul: Meta ads against real stock, the ad product 
 
 - **App:** `index.html`, served by GitHub Pages. It holds no data.
 - **Data:** the Mulmul Threads Supabase project (`mulmul-workspace`), tables `dash_docs`, `dash_doc_history` and `dash_access`. See `db/schema.sql`.
-- **Sign-in:** Mulmul Threads accounts. Founders and admins see every dashboard; anyone else needs a row in `dash_access` with `dashboard = 'ads-control'`.
+- **Sign-in:** Mulmul Threads accounts. Founders and admins see every dashboard; anyone else is given access in Mulmul Threads under Admin, People & access (a row in `dash_access` with `dashboard = 'ads-control'`).
 
 ## Scorer refresh
 

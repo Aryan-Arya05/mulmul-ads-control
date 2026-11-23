@@ -398,22 +398,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
 .who button{font:inherit;font-size:12px;cursor:pointer;border:1px solid rgba(255,255,255,.3);background:none;color:var(--band-ink);border-radius:999px;padding:4px 12px}
 .who button:hover{background:rgba(255,255,255,.14)}
 
-/* access view */
-#view-access .wrap{max-width:980px;margin:0 auto;padding:22px 16px 60px}
-#view-access .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-#view-access h2{font-family:var(--display);font-size:20px;margin:0 0 4px}
-#view-access p.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
-#view-access table{width:100%;border-collapse:collapse}
-#view-access th,#view-access td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
-#view-access th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--soft)}
-#view-access tr:last-child td{border-bottom:0}
-#view-access .nm{font-weight:600}#view-access .em{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
-#view-access .tag{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--soft);color:var(--ink);text-transform:capitalize}
-#view-access label.tog{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
-#view-access input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
-#view-access .note{color:var(--muted);font-size:12.5px;margin-top:12px}
-#view-access .err{color:#b3261e;font-size:13px;margin-top:10px;min-height:18px}
-@media (max-width:640px){#view-access thead{display:none}#view-access tr{display:block;padding:10px 14px;border-bottom:1px solid var(--line)}#view-access td{display:block;border:0;padding:3px 0}}
 [hidden]{display:none!important}
 @media (max-width:760px){.switch button{flex:1;padding:8px 10px;white-space:normal}}
 </style>
@@ -447,7 +431,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
     <div class="switch" role="tablist" aria-label="Views">
       <button type="button" role="tab" id="tab-dash" aria-selected="true">Ads vs Stock<small>Daily alerts and weekly review</small></button>
       <button type="button" role="tab" id="tab-scorer" aria-selected="false">Ad Product Scorer<small>What to push, hold or stop</small></button>
-      <button type="button" role="tab" id="tab-access" aria-selected="false" hidden>Access<small>Who can open this</small></button>
     </div>
   </div>
   <div class="jump" id="jump"><a href="#daily">Daily stock check</a><a href="#performance">Performance by date</a><a href="#segments">Audience segments</a><a href="#weekly">Week in review</a></div>
@@ -599,15 +582,6 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
   </section>
 </div>
 </div>
-<div id="view-access" hidden>
-  <div class="wrap">
-    <h2>Who can open Ads Control</h2>
-    <p class="lead">People are Mulmul Threads accounts. Founders and admins always have access. Tick anyone else who should see this dashboard; untick to remove them. Changes save straight away.</p>
-    <div class="card"><table><thead><tr><th>Person</th><th>Threads role</th><th>Access</th></tr></thead><tbody id="acc-body"></tbody></table></div>
-    <div class="err" id="acc-err" role="alert"></div>
-    <p class="note">To add someone who is not listed, invite them to Mulmul Threads first.</p>
-  </div>
-</div>
 <script src="vendor/supabase.js?v=2.119.0"></script>
 <script>
 /* Sign-in and data access. Accounts are Mulmul Threads accounts; what a person may open is decided in the database, not here. */
@@ -618,37 +592,18 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
   function msg(t){g("gate-msg").textContent=t||""}
   function showGate(mode){g("app").hidden=true;g("gate").hidden=false;var denied=mode==="denied";
     g("gate-form").hidden=denied;g("gate-google").hidden=denied;g("gate-or").hidden=denied;g("gate-out").hidden=!denied;
-    g("gate-lead").textContent=denied?"You are signed in, but this dashboard has not been shared with you. Ask a Mulmul Threads admin for access.":"Sign in with your Mulmul Threads account."}
+    g("gate-lead").textContent=denied?"You are signed in, but this dashboard has not been shared with you. Ask an admin to give you access in Mulmul Threads (Admin, People & access).":"Sign in with your Mulmul Threads account."}
   function open(session){
     if(opened)return;
     sb.from("dash_docs").select("name").eq("dashboard",DASH).then(function(r){
       if(r.error||!r.data||!r.data.length){showGate("denied");msg(r.error?"Could not reach the data. Try again.":"");return}
       opened=true;me=session.user.id;g("who-name").textContent=session.user.email||"";g("gate").hidden=true;g("app").hidden=false;ready(true);
-      sb.from("profiles").select("role,active").eq("id",me).maybeSingle().then(function(p){
-        if(p.data&&p.data.active&&(p.data.role==="founder"||p.data.role==="admin")){g("tab-access").hidden=false;if(window.MulmulRoute)window.MulmulRoute()}});
       if(location.hash&&location.hash.indexOf("access_token")>=0)history.replaceState(null,"",location.pathname);
     });
   }
   window.MulmulDocs={get:function(file){var name=String(file).replace(/\.json$/,"");
     return gate.then(function(){return sb.from("dash_docs").select("data").eq("dashboard",DASH).eq("name",name).maybeSingle()})
       .then(function(r){if(r.error)throw r.error;return r.data?r.data.data:null})}};
-  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
-  window.MulmulAccess={load:function(){
-    var body=g("acc-body"),err=g("acc-err");err.textContent="";
-    Promise.all([sb.from("profiles").select("id,full_name,email,role,active").order("full_name"),sb.from("dash_access").select("user_id").eq("dashboard",DASH)]).then(function(r){
-      if(r[0].error||r[1].error){err.textContent="Could not load the list. Reload and try again.";return}
-      var has={};r[1].data.forEach(function(a){has[a.user_id]=true});body.textContent="";
-      r[0].data.filter(function(p){return p.active}).forEach(function(p){
-        var tr=el("tr"),a=el("td");a.appendChild(el("div","nm",p.full_name||p.email||"Unnamed"));a.appendChild(el("div","em",p.email||""));tr.appendChild(a);
-        var b=el("td");b.appendChild(el("span","tag",p.role||"member"));tr.appendChild(b);
-        var c=el("td");
-        if(p.role==="founder"||p.role==="admin")c.appendChild(el("span","em","Always, as "+p.role));
-        else{var lab=el("label","tog"),cb=el("input");cb.type="checkbox";cb.checked=!!has[p.id];var tx=el("span",null,cb.checked?"Can view":"No access");lab.appendChild(cb);lab.appendChild(tx);c.appendChild(lab);
-          cb.addEventListener("change",function(){cb.disabled=true;err.textContent="";
-            var q=cb.checked?sb.from("dash_access").insert({user_id:p.id,dashboard:DASH,level:"view",granted_by:me}):sb.from("dash_access").delete().eq("user_id",p.id).eq("dashboard",DASH);
-            q.then(function(x){cb.disabled=false;if(x.error){cb.checked=!cb.checked;err.textContent="That change did not save: "+x.error.message}tx.textContent=cb.checked?"Can view":"No access"})})}
-        tr.appendChild(c);body.appendChild(tr)});
-    })}};
   g("gate-form").addEventListener("submit",function(e){e.preventDefault();msg("");g("gate-go").disabled=true;
     sb.auth.signInWithPassword({email:g("gate-email").value.trim(),password:g("gate-pass").value}).then(function(r){g("gate-go").disabled=false;
       if(r.error)msg(/invalid/i.test(r.error.message)?"Email or password is not right.":r.error.message)})});
@@ -661,17 +616,15 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
 </script>
 <script>
 (function(){
-  var META={dash:"Meta ad account 277407879800547, checked against real Vinculum stock counted as pairs. Updates every morning.",scorer:"Sales and traffic: Shopify India, 22 Oct to 21 Nov 2026 · Stock: Vinculum, synced 21 Nov 2026 around 3 pm IST · Production and in-transit: 19 Nov export · Meta ads: last 7 days",access:"Decide who in Mulmul Threads can open this dashboard."},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer",access:"Access"},VIEWS=["dash","scorer","access"];
+  var META={dash:"Meta ad account 277407879800547, checked against real Vinculum stock counted as pairs. Updates every morning.",scorer:"Sales and traffic: Shopify India, 22 Oct to 21 Nov 2026 · Stock: Vinculum, synced 21 Nov 2026 around 3 pm IST · Production and in-transit: 19 Nov export · Meta ads: last 7 days"},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer"},VIEWS=["dash","scorer"];
   function g(i){return document.getElementById(i)}
   function show(v,target){
-    if(v==="access"&&g("tab-access").hidden)v="dash";
     VIEWS.forEach(function(x){g("view-"+x).hidden=x!==v;g("tab-"+x).setAttribute("aria-selected",x===v?"true":"false")});
     g("band-title").textContent=TITLE[v];g("band-meta").textContent=META[v];g("jump").hidden=v!=="dash";
-    if(v==="access"&&window.MulmulAccess)window.MulmulAccess.load();
     if(target){var t=g(target);if(t&&t.scrollIntoView)t.scrollIntoView()}
   }
-  function route(){var h=(location.hash||"").replace("#","");if(h==="scorer"||h==="access")show(h);else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
-  [["dash","stock"],["scorer","scorer"],["access","access"]].forEach(function(x){g("tab-"+x[0]).addEventListener("click",function(){if(location.hash!=="#"+x[1])location.hash=x[1];route();if(window.scrollTo)window.scrollTo(0,0)})});
+  function route(){var h=(location.hash||"").replace("#","");if(h==="scorer")show(h);else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
+  [["dash","stock"],["scorer","scorer"]].forEach(function(x){g("tab-"+x[0]).addEventListener("click",function(){if(location.hash!=="#"+x[1])location.hash=x[1];route();if(window.scrollTo)window.scrollTo(0,0)})});
   window.addEventListener("hashchange",route);window.MulmulRoute=route;window.MulmulSetMeta=function(v,text){META[v]=text;route()};route();
 })();
 </script>
