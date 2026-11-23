@@ -1,0 +1,29 @@
+name: Refresh Ad Product Scorer
+
+on:
+  schedule:
+    # Mondays 07:30 IST (02:00 UTC), before the weekly review, and Thursdays 07:30 IST
+    - cron: "0 2 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scorer
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Score products and save to the dashboard
+        env:
+          SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}
+          DASH_INGEST_TOKEN: ${{ secrets.DASH_INGEST_TOKEN }}
+        run: python3 scripts/scorer.py

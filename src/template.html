@@ -183,7 +183,7 @@ __BODY_SCORER__
   }
   function route(){var h=(location.hash||"").replace("#","");if(h==="scorer"||h==="access")show(h);else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
   [["dash","stock"],["scorer","scorer"],["access","access"]].forEach(function(x){g("tab-"+x[0]).addEventListener("click",function(){if(location.hash!=="#"+x[1])location.hash=x[1];route();if(window.scrollTo)window.scrollTo(0,0)})});
-  window.addEventListener("hashchange",route);window.MulmulRoute=route;route();
+  window.addEventListener("hashchange",route);window.MulmulRoute=route;window.MulmulSetMeta=function(v,text){META[v]=text;route()};route();
 })();
 </script>
 <script>__JS_DASH__</script>

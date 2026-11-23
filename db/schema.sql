@@ -37,3 +37,8 @@ create table public.dash_doc_history (
 --   private.dash_begin / dash_append / dash_commit      build a long document in pieces, then publish it in one step
 --   private.ads_add_day(day, rows, new_ads, products)   add one day of per-ad numbers to the "periods" document
 -- public.dash_staging holds documents while they are being built.
+
+-- Automated jobs (migration "dashboards_ingest_tokens"): public.dash_ingest(token, dashboard, name, data) and
+-- public.dash_read(token, dashboard, name) let the weekly GitHub Action save and read documents with a token.
+-- Only the token's hash is stored, in private.dash_tokens, and a token works for one dashboard.
+-- In the stock-lookup project, public.ads_stock_pairs() returns sellable stock per piece for the scorer.

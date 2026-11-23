@@ -6,6 +6,10 @@ Internal dashboard for Shop Mulmul: Meta ads against real stock, the ad product 
 - **Data:** the Mulmul Threads Supabase project (`mulmul-workspace`), tables `dash_docs`, `dash_doc_history` and `dash_access`. See `db/schema.sql`.
 - **Sign-in:** Mulmul Threads accounts. Founders and admins see every dashboard; anyone else needs a row in `dash_access` with `dashboard = 'ads-control'`.
 
+## Scorer refresh
+
+`.github/workflows/scorer.yml` runs `scripts/scorer.py` on Monday and Thursday mornings (and on demand from the Actions tab). It reads Shopify sales and traffic and Vinculum stock, scores every product and saves the result to the database. It needs two repository secrets: `SHOPIFY_ACCESS_TOKEN` (Admin API token with `read_products` and `read_reports`) and `DASH_INGEST_TOKEN`.
+
 ## Changing the page
 
 Edit `src/adsdash.html`, `src/scorer.html` or `src/template.html`, then run `python3 src/build.py` from the repo root to rebuild `index.html`.
