@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mulmul Site Audit</title>
+<style>
+.wrap{max-width:1320px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:22px}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline;justify-content:space-between}
+.sechead h2{font-family:var(--display);font-size:20px;margin:0}
+.sechead p{margin:0;color:var(--muted);font-size:13px;max-width:80ch}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px}
+.tile span{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tile b{font-family:var(--display);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile small{color:var(--muted);font-size:12.5px}
+.tile.bad b{color:var(--stop,#a8281f)}
+.flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.flag{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--hold,#8a5a00);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.flag.s-high{border-left-color:var(--stop,#a8281f)}
+.flag.s-low{border-left-color:var(--muted)}
+.flag .sev{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hold,#8a5a00)}
+.flag.s-high .sev{color:var(--stop,#a8281f)}
+.flag h3{margin:0;font-size:15px;font-weight:600;line-height:1.3}
+.flag p{margin:0;color:var(--muted);font-size:13px}
+.flag .do{color:var(--ink);font-size:13px;border-top:1px dashed var(--line);padding-top:6px}
+.flag .do b{font-weight:600}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px}
+.chart{display:flex;align-items:flex-end;gap:8px;height:190px;padding-top:22px;overflow-x:auto}
+.col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:30px}
+.col i{display:block;width:100%;max-width:54px;border-radius:6px 6px 2px 2px;background:var(--accent);min-height:2px}
+.col.last i{background:var(--stop,#a8281f)}
+.col em{font-style:normal;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.col small{font-size:11px;color:var(--muted);white-space:nowrap}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.controls input,.controls select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.controls input{flex:1 1 220px;min-width:0}
+.controls input:focus-visible,.controls select:focus-visible,.th:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.count{color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;font-size:13px}
+.tablebox{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;background:var(--panel)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--soft)}
+.th{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0}
+.th[data-dir]::after{content:" ▾"}
+.th[data-dir="asc"]::after{content:" ▴"}
+td a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted);word-break:break-word}
+.path{max-width:420px;font-weight:500}
+.low{color:var(--stop,#a8281f);font-weight:600}
+.dim{color:var(--muted)}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;margin:0 4px 4px 0;background:var(--soft);border:1px solid var(--line);white-space:nowrap}
+.pill.red{color:var(--stop,#a8281f);border-color:currentColor;background:none}
+td.tags{text-align:left;min-width:220px}
+.more{align-self:center;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 16px;cursor:pointer}
+.note{color:var(--muted);font-size:12.5px;margin:0;max-width:100ch}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+@media (max-width:760px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{padding:12px}.tile b{font-size:22px}.flags{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<p class="bandmeta">Website sessions and catalogue from Shopify. Refreshed every Monday and Thursday morning.</p>
+<div class="wrap">
+  <div class="empty" id="sa-empty">Loading the site audit…</div>
+  <div id="sa-body" hidden style="display:flex;flex-direction:column;gap:22px">
+    <section class="sec"><div class="tiles" id="sa-tiles"></div></section>
+    <section class="sec">
+      <div class="sechead"><h2>What needs attention</h2><p>Worked out from the numbers on every refresh. Red first.</p></div>
+      <div class="flags" id="sa-flags"></div>
+    </section>
+    <section class="sec">
+      <div class="sechead"><h2>Add-to-cart rate by week</h2><p>Share of website sessions that added something to the cart. Payment-link sessions are left out.</p></div>
+      <div class="card"><div class="chart" id="sa-chart"></div></div>
+    </section>
+    <section class="sec">
+      <div class="sechead"><h2>Where the funnel leaks</h2>
+        <div class="controls"><select id="sa-dim" aria-label="Break down by"><option value="device">By device</option><option value="ltype">By landing page type</option><option value="source">By traffic source</option><option value="country">By country</option></select></div></div>
+      <div class="tablebox"><table><thead><tr><th>Group</th><th>Sessions</th><th>Share</th><th>Add to cart</th><th>Reached checkout</th><th>Orders</th><th>Order rate</th><th>Bounce</th></tr></thead><tbody id="sa-dimrows"></tbody></table></div>
+    </section>
+    <section class="sec">
+      <div class="sechead"><h2>Landing pages</h2><p>The 80 pages where most visits start. Red means below half the site average, or a bounce above 75%.</p></div>
+      <div class="controls"><input id="sa-q" type="search" placeholder="Search page" aria-label="Search page">
+        <select id="sa-kind" aria-label="Page kind"><option value="">All pages</option><option value="/products/">Product pages</option><option value="/collections/">Collection pages</option></select>
+        <select id="sa-only" aria-label="Show"><option value="">Everything</option><option value="weak">Only weak pages</option></select>
+        <span class="count" id="sa-pcount"></span></div>
+      <div class="tablebox"><table><thead><tr id="sa-phead"></tr></thead><tbody id="sa-prows"></tbody></table></div>
+    </section>
+    <section class="sec">
+      <div class="sechead"><h2>Catalogue fix list</h2><p id="sa-catlead"></p></div>
+      <div class="tiles" id="sa-ctiles"></div>
+      <div class="controls"><input id="sa-cq" type="search" placeholder="Search product" aria-label="Search product">
+        <select id="sa-cissue" aria-label="Issue"><option value="">Any issue</option></select>
+        <select id="sa-cstock" aria-label="Stock"><option value="in">In stock only</option><option value="">In stock and sold out</option><option value="out">Sold out only</option></select>
+        <span class="count" id="sa-ccount"></span></div>
+      <div class="tablebox"><table><thead><tr><th>Product</th><th>Type</th><th>Stock</th><th>Images</th><th style="text-align:left">What to fix</th></tr></thead><tbody id="sa-crows"></tbody></table></div>
+      <button class="more" id="sa-cmore" type="button" hidden>Show more</button>
+    </section>
+    <p class="note" id="sa-note"></p>
+  </div>
+</div>
+<script>
+(function(){
+  function g(i){return document.getElementById(i)}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  function n(x){return Number(x||0).toLocaleString("en-IN")}
+  function pc(a,b,d){return b?(100*a/b).toFixed(d==null?2:d)+"%":"–"}
+  function day(s){var d=new Date(s+"T00:00:00");return isNaN(d)?s:d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
+  var D=null,psort={k:1,dir:"desc"},cshow=100;
+  function tiles(){
+    var s=D.site,t=D.total,l=D.link,w=D.weeks||[],last=w[w.length-1],first=w[0];
+    var cartNow=last?100*last[2]/last[1]:0,cartThen=first?100*first[2]/first[1]:0;
+    var h=[["Website sessions",n(s[0]),day(D.meta.date_from)+" to "+day(D.meta.date_to),""],
+      ["Add to cart",pc(s[1],s[0]),last?"Last full week "+cartNow.toFixed(2)+"%, was "+cartThen.toFixed(2)+"% in the week of "+day(first[0]):"",cartThen&&cartNow<0.8*cartThen?"bad":""],
+      ["Checkouts completed",pc(s[3],s[2],0),n(s[3])+" of "+n(s[2])+" started",s[2]&&s[3]/s[2]<0.45?"bad":""],
+      ["Website order rate",pc(s[3],s[0]),"Shopify shows "+pc(t[3],t[0])+" with payment links counted",""],
+      ["Payment-link checkouts",n(l[3]),pc(l[3],t[3],0)+" of all completed checkouts",""]];
+    g("sa-tiles").innerHTML=h.map(function(x){return '<div class="tile '+x[3]+'"><span>'+x[0]+'</span><b>'+x[1]+'</b><small>'+esc(x[2])+'</small></div>'}).join("");
+  }
+  function flags(){
+    var f=D.flags||[];
+    g("sa-flags").innerHTML=f.length?f.map(function(x){return '<div class="flag s-'+esc(x.s)+'"><div class="sev">'+(x.s==="high"?"Fix first":x.s==="med"?"Fix next":"Keep an eye")+'</div><h3>'+esc(x.t)+'</h3><p>'+esc(x.d)+'</p><div class="do"><b>Do:</b> '+esc(x.a)+'</div></div>'}).join(""):'<div class="empty">Nothing flagged in this period.</div>';
+  }
+  function chart(){
+    var w=D.weeks||[],mx=Math.max.apply(null,w.map(function(x){return x[1]?x[2]/x[1]:0}).concat([0.0001]));
+    g("sa-chart").innerHTML=w.map(function(x,i){var r=x[1]?x[2]/x[1]:0;
+      return '<div class="col'+(i===w.length-1?" last":"")+'" title="'+n(x[1])+' sessions, '+n(x[2])+' with a cart addition, '+n(x[4])+' website orders"><em>'+(100*r).toFixed(2)+'%</em><i style="height:'+Math.round(100*r/mx)+'%"></i><small>'+day(x[0])+'</small></div>'}).join("");
+  }
+  function dim(){
+    var rows=D[g("sa-dim").value]||[],tot=D.total[0],avg=D.site[0]?D.site[1]/D.site[0]:0;
+    g("sa-dimrows").innerHTML=rows.filter(function(r){return r[1]>0}).map(function(r){var cr=r[1]?r[2]/r[1]:0,link=r[0]==="";
+      return '<tr><td>'+(link?'Payment links <span class="dim">(no browsing)</span>':esc(r[0].charAt(0).toUpperCase()+r[0].slice(1)))+'</td><td>'+n(r[1])+'</td><td>'+pc(r[1],tot,1)+'</td><td'+(!link&&r[1]>2000&&cr<0.5*avg?' class="low"':'')+'>'+pc(r[2],r[1])+'</td><td>'+n(r[3])+'</td><td>'+n(r[4])+'</td><td>'+pc(r[4],r[1])+'</td><td'+(r[5]>=75?' class="low"':'')+'>'+r[5].toFixed(0)+'%</td></tr>'}).join("");
+  }
+  var PH=[["Page",0],["Sessions",1],["Add to cart",6],["Reached checkout",3],["Orders",4],["Order rate",7],["Bounce",5]];
+  function weak(r,avg){return r[1]>=1000&&(r[5]>=75||(r[1]?r[2]/r[1]:0)<0.5*avg)}
+  function pages(){
+    var avg=D.site[0]?D.site[1]/D.site[0]:0,q=g("sa-q").value.trim().toLowerCase(),kind=g("sa-kind").value,only=g("sa-only").value;
+    var rows=(D.pages||[]).map(function(r){return r.concat([r[1]?r[2]/r[1]:0,r[1]?r[4]/r[1]:0])})
+      .filter(function(r){return(!q||r[0].toLowerCase().indexOf(q)>=0)&&(!kind||r[0].indexOf(kind)===0)&&(!only||weak(r,avg))});
+    rows.sort(function(a,b){var x=a[psort.k],y=b[psort.k],c=typeof x==="string"?x.localeCompare(y):x-y;return psort.dir==="asc"?c:-c});
+    g("sa-phead").innerHTML=PH.map(function(h){return '<th><button class="th" type="button" data-k="'+h[1]+'"'+(psort.k===h[1]?' data-dir="'+psort.dir+'"':'')+'>'+h[0]+'</button></th>'}).join("");
+    g("sa-pcount").textContent=rows.length+" pages";
+    var dom=(D.meta.domain||"").replace(/\/$/,"");
+    g("sa-prows").innerHTML=rows.length?rows.map(function(r){var name=r[0]==="/"?"Homepage":r[0].replace(/^\/(products|collections)\//,"").replace(/-/g," ");
+      return '<tr><td class="path"><a href="'+esc(dom+r[0])+'" target="_blank" rel="noopener">'+esc(name)+'</a><div class="dim" style="font-size:12px">'+(r[0].indexOf("/products/")===0?"Product":r[0].indexOf("/collections/")===0?"Collection":"Page")+'</div></td><td>'+n(r[1])+'</td><td'+(r[1]>=1000&&r[6]<0.5*avg?' class="low"':'')+'>'+(100*r[6]).toFixed(2)+'%</td><td>'+n(r[3])+'</td><td>'+n(r[4])+'</td><td>'+(100*r[7]).toFixed(2)+'%</td><td'+(r[5]>=75?' class="low"':'')+'>'+r[5].toFixed(0)+'%</td></tr>'}).join(""):'<tr><td colspan="7" class="empty">No pages match.</td></tr>';
+  }
+  function cat(){
+    var C=D.catalog||{rows:[],counts:{}},q=g("sa-cq").value.trim().toLowerCase(),iss=g("sa-cissue").value,st=g("sa-cstock").value;
+    var rows=C.rows.filter(function(o){return(!q||o.t.toLowerCase().indexOf(q)>=0)&&(!iss||o.f.indexOf(iss)>=0)&&(!st||(st==="in"?o.inv>0:o.inv<=0))});
+    g("sa-ccount").textContent=rows.length+" products";
+    var dom=(D.meta.domain||"").replace(/\/$/,"");
+    g("sa-crows").innerHTML=rows.length?rows.slice(0,cshow).map(function(o){
+      return '<tr><td class="path"><a href="'+esc(dom+"/products/"+o.h)+'" target="_blank" rel="noopener">'+esc(o.t)+'</a></td><td>'+esc(o.ty)+'</td><td'+(o.inv<=0?' class="low"':'')+'>'+n(o.inv)+'</td><td'+(o.img<3?' class="low"':'')+'>'+o.img+'</td><td class="tags">'+o.f.map(function(x){return '<span class="pill'+(x==="No stock"?"":" red")+'">'+esc(x)+'</span>'}).join("")+'</td></tr>'}).join(""):'<tr><td colspan="5" class="empty">Nothing to fix here.</td></tr>';
+    g("sa-cmore").hidden=rows.length<=cshow;
+  }
+  function catHead(){
+    var C=D.catalog||{counts:{},live:0},c=C.counts,keys=["In stock with a content problem","No stock","Under 3 images","Broken characters","Old delivery line","No description","Title needs cleanup","No search title or description"];
+    g("sa-catlead").textContent=n(C.live)+" products are live on the website. "+n(C.found||0)+" have at least one issue"+(C.found>C.listed?"; the "+n(C.listed)+" most important are listed":"")+".";
+    g("sa-ctiles").innerHTML=keys.filter(function(k){return c[k]}).map(function(k){return '<div class="tile"><span>'+esc(k)+'</span><b>'+n(c[k])+'</b><small>'+pc(c[k],C.live,0)+' of live products</small></div>'}).join("");
+    g("sa-cissue").innerHTML='<option value="">Any issue</option>'+keys.slice(1,7).filter(function(k){return c[k]}).map(function(k){return '<option>'+esc(k)+'</option>'}).join("");
+  }
+  function draw(){tiles();flags();chart();dim();pages();catHead();cat();
+    var ch=(D.channels||[]).map(function(c){return c[0]+" "+n(c[1])+" orders"}).join(" · ");
+    g("sa-note").textContent="Orders by channel in the same period: "+ch+". Payment-link sessions are visits that open straight on the checkout page with no referrer, which is how draft-order links sent by stylists appear. App orders are not part of website sessions.";}
+  g("sa-dim").addEventListener("change",dim);
+  ["sa-q","sa-kind","sa-only"].forEach(function(i){g(i).addEventListener("input",pages)});
+  ["sa-cq","sa-cissue","sa-cstock"].forEach(function(i){g(i).addEventListener("input",function(){cshow=100;cat()})});
+  g("sa-cmore").addEventListener("click",function(){cshow+=200;cat()});
+  g("sa-phead").addEventListener("click",function(e){var b=e.target.closest?e.target.closest(".th"):null;if(!b)return;var k=+b.getAttribute("data-k");
+    if(psort.k===k)psort.dir=psort.dir==="desc"?"asc":"desc";else psort={k:k,dir:k===0?"asc":"desc"};pages()});
+  window.MulmulDocs.get("site.json").then(function(doc){
+    if(!doc||!doc.total){g("sa-empty").textContent="The site audit has not been generated yet. It fills in on the next Monday or Thursday refresh.";return}
+    D=doc;g("sa-empty").hidden=true;g("sa-body").hidden=false;draw();
+    var u=new Date(doc.meta.updated);
+    if(window.MulmulSetMeta)window.MulmulSetMeta("site","Website sessions and catalogue: Shopify, "+day(doc.meta.date_from)+" to "+day(doc.meta.date_to)+(isNaN(u)?"":" · Updated "+u.toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"})+" IST"));
+  }).catch(function(){g("sa-empty").textContent="Could not load the site audit. Refresh the page to try again."});
+})();
+</script>
+</body>
+</html>

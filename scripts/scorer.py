@@ -4,6 +4,7 @@
 Pulls 30-day sales and landing traffic from Shopify, real stock from Vinculum (via the
 stock-lookup database), pairs tops with bottoms, scores every product, adds Meta ad
 exposure, and saves the result as the "products" document of the Ads Control dashboard.
+It then builds the Site Audit (website funnel, landing pages, catalogue fix list) and saves it as "site".
 
 Environment:
   SHOPIFY_ACCESS_TOKEN  Admin API token (needs read_products and read_reports), or instead:
@@ -14,6 +15,7 @@ Environment:
 Run with --fixtures DIR to compute from saved input files instead of the live APIs
 (used for testing), and --out FILE to write the result to a file instead of saving it.
 """
+import traceback
 import argparse, collections, datetime, difflib, json, math, os, re, statistics, sys, time, urllib.error, urllib.parse, urllib.request
 
 STORE = os.environ.get("SHOPIFY_STORE", "shopmulmul.myshopify.com")
@@ -109,7 +111,7 @@ UTM_Q = ("FROM sessions SHOW sessions, sessions_with_cart_additions, sessions_th
          "GROUP BY utm_source, utm_medium, utm_campaign, landing_page_path SINCE -7d UNTIL -1d ORDER BY sessions DESC LIMIT 10000")
 PRODUCTS_Q = """query($after:String){products(first:100, after:$after, query:"status:active"){
   pageInfo{hasNextPage endCursor}
-  nodes{title handle productType createdAt publishedAt totalInventory tags description(truncateAt:200)
+  nodes{title handle productType createdAt publishedAt totalInventory tags description(truncateAt:200) seo{title description}
     mediaCount{count} media(first:1){nodes{preview{image{url width}}}} priceRangeV2{minVariantPrice{amount}}}}}"""
 COLLECTION_Q = """query($q:String!,$after:String){collections(first:1, query:$q){nodes{title handle
   products(first:100, after:$after){pageInfo{hasNextPage endCursor} nodes{title}}}}}"""
@@ -604,6 +606,169 @@ def add_ad_exposure(data, inp):
     return totals, [[h, n] for h, n in top]
 
 
+
+# ---------------------------------------------------------------- site audit
+
+SESS = "sessions, sessions_with_cart_additions, sessions_that_reached_checkout, sessions_that_completed_checkout"
+SITE_Q = dict(
+    device=f"FROM sessions SHOW {SESS}, bounce_rate GROUP BY session_device_type SINCE -30d UNTIL -1d ORDER BY sessions DESC",
+    ltype=f"FROM sessions SHOW {SESS}, bounce_rate GROUP BY landing_page_type SINCE -30d UNTIL -1d ORDER BY sessions DESC",
+    source=f"FROM sessions SHOW {SESS}, bounce_rate GROUP BY referrer_source SINCE -30d UNTIL -1d ORDER BY sessions DESC",
+    country=f"FROM sessions SHOW {SESS}, bounce_rate GROUP BY session_country SINCE -30d UNTIL -1d ORDER BY sessions DESC LIMIT 12",
+    pages=f"FROM sessions SHOW {SESS}, bounce_rate GROUP BY landing_page_path SINCE -30d UNTIL -1d ORDER BY sessions DESC LIMIT 80",
+    weeks=f"FROM sessions SHOW {SESS} GROUP BY referrer_source TIMESERIES week SINCE -84d UNTIL -1d",
+    channels="FROM sales SHOW orders, total_sales GROUP BY sales_channel SINCE -30d UNTIL -1d ORDER BY orders DESC",
+)
+SKEYS = ["sessions", "sessions_with_cart_additions", "sessions_that_reached_checkout", "sessions_that_completed_checkout"]
+BROKEN_TEXT = re.compile(r"\?{2,}|\?\u0178|\u0178|\u0192|\ufffd|\u00e2\u20ac")
+
+
+def fetch_site():
+    out = {k: shopifyql(q) for k, q in SITE_Q.items()}
+    out["domain"] = gql("{shop{primaryDomain{url}}}")["shop"]["primaryDomain"]["url"]
+    return out
+
+
+def pct(a, b):
+    return round(100.0 * a / b, 3) if b else 0.0
+
+
+def build_site(raw, products):
+    """Turn the session and catalogue pulls into the Site Audit document."""
+    def rows(name, key):
+        out = []
+        for r in raw[name]:
+            v = [int(num(r.get(k))) for k in SKEYS]
+            out.append([str(r.get(key) or ""), *v, round(num(r.get("bounce_rate")) * 100, 1)])
+        return out
+    device, ltype, source = rows("device", "session_device_type"), rows("ltype", "landing_page_type"), rows("source", "referrer_source")
+    country, pages = rows("country", "session_country"), rows("pages", "landing_page_path")
+    total = [sum(r[i] for r in source) for i in range(1, 5)]
+    link = next((r[1:5] for r in source if r[0] == ""), [0, 0, 0, 0])       # sessions that open straight on a payment link
+    site = [t - l for t, l in zip(total, link)]
+    # weeks: every source except the payment-link sessions; only complete weeks
+    wk = {}
+    for r in raw["weeks"]:
+        w = str(r.get("week"))[:10]
+        a = wk.setdefault(w, [0, 0, 0, 0, 0])
+        v = [int(num(r.get(k))) for k in SKEYS]
+        if (r.get("referrer_source") or "") == "":
+            a[4] += v[3]
+            continue
+        for i in range(4):
+            a[i] += v[i]
+    yesterday = TODAY - datetime.timedelta(days=1)
+    weeks = [[w, *v] for w, v in sorted(wk.items())
+             if datetime.date.fromisoformat(w) + datetime.timedelta(days=6) <= yesterday]
+    channels = [[str(r.get("sales_channel") or ""), int(num(r.get("orders"))), round(num(r.get("total_sales")))] for r in raw["channels"]]
+
+    # catalogue hygiene: products live on the online store
+    issues, counts, live = [], collections.Counter(), 0
+    for p in products:
+        if p.get("stub") or not p.get("publishedAt"):
+            continue
+        title = (p.get("title") or "").strip()
+        if norm(title) in EXCLUDED_TITLES or norm(p.get("productType")) in ("gift card", "gift cards"):
+            continue
+        live += 1
+        desc = p.get("description") or ""
+        inv = int(p.get("totalInventory") or 0)
+        img = int((p.get("mediaCount") or {}).get("count") or 0)
+        f = []
+        if inv <= 0:
+            f.append("No stock")
+        if img < 3:
+            f.append("Under 3 images")
+        if not desc.strip():
+            f.append("No description")
+        if BROKEN_TEXT.search(desc) or BROKEN_TEXT.search(title):
+            f.append("Broken characters")
+        if "we are delivering now" in desc.lower():
+            f.append("Old delivery line")
+        letters = [c for c in title if c.isalpha()]
+        if (letters and sum(c.isupper() for c in letters) > 0.8 * len(letters) and len(letters) > 6) or re.search(r"\bOLD\b", title):
+            f.append("Title needs cleanup")
+        seo = p.get("seo") or {}
+        if not seo.get("title") and not seo.get("description"):
+            counts["No search title or description"] += 1
+        for x in f:
+            counts[x] += 1
+        if f:
+            issues.append(dict(t=title, h=p.get("handle"), ty=p.get("productType") or "", inv=inv, img=img, f=f,
+                               d=(p.get("publishedAt") or "")[:10]))
+    counts["In stock with a content problem"] = sum(1 for o in issues if o["inv"] > 0 and len(o["f"]) > 0)
+    issues.sort(key=lambda o: (o["inv"] <= 0, -len([x for x in o["f"] if x != "No stock"]), -o["inv"]))
+
+    # flag list
+    flags = []
+    def flag(sev, title, detail, do):
+        flags.append(dict(s=sev, t=title, d=detail, a=do))
+    cart, reach, done = pct(site[1], site[0]), pct(site[2], site[1]), pct(site[3], site[2])
+    if total[3] and link[3] > 0.25 * total[3]:
+        flag("high", f"{round(100 * link[3] / total[3])}% of completed checkouts are payment links, not website shopping",
+             f"{link[3]:,} of {total[3]:,} completed checkouts opened straight on checkout with no browsing. Counting only real visits, "
+             f"the website turns {pct(site[3], site[0]):.2f}% of sessions into orders, not {pct(total[3], total[0]):.2f}%.",
+             "Use the website-only rate when judging the site, ads landing pages and the app.")
+    if len(weeks) >= 6:
+        rate = lambda w: pct(w[2], w[1])
+        now, base = rate(weeks[-1]), statistics.mean(rate(w) for w in weeks[:4])
+        if base and now < 0.8 * base:
+            flag("high", f"Add-to-cart rate is down to {now:.2f}% from {base:.2f}%",
+                 f"Week of {datetime.date.fromisoformat(weeks[-1][0]):%-d %b} against the average of the four weeks from {datetime.date.fromisoformat(weeks[0][0]):%-d %b}. The drop is before checkout: fewer visitors add anything.",
+                 "Check what changed on collection and product pages in that period, and whether ad traffic moved to weaker pages.")
+    mob = next((r for r in device if r[0] == "mobile"), None)
+    if mob and mob[1] > 0.8 * total[0]:
+        flag("high" if pct(mob[2], mob[1]) < 2 else "med",
+             f"Mobile is {round(100 * mob[1] / total[0])}% of sessions and adds to cart {pct(mob[2], mob[1]):.2f}% of the time",
+             f"{mob[1]:,} mobile sessions, {mob[2]:,} with a cart addition, {mob[4]:,} completed checkouts. "
+             f"Only {pct(mob[4], mob[3]):.0f}% of mobile checkouts that start are completed.",
+             "Review the mobile product page (size picker, add-to-cart button, image load) and the mobile checkout step by step.")
+    if done and done < 45:
+        flag("med", f"Only {done:.0f}% of started checkouts complete",
+             f"{site[2]:,} website sessions reached checkout and {site[3]:,} paid (payment links left out).",
+             "Check payment options, COD, shipping charge shown at checkout and any forced login.")
+    for r in pages[:40]:
+        if r[1] >= 0.1 * total[0] and r[0] != "/" and pct(r[2], r[1]) < cart:
+            flag("high", f"{r[0]} takes {round(100 * r[1] / total[0])}% of all sessions and converts below the site average",
+                 f"{r[1]:,} sessions, {pct(r[2], r[1]):.2f}% add to cart, {r[4]:,} orders ({pct(r[4], r[1]):.2f}%).",
+                 "This page decides the result of most ad spend. Fix its order of products, sold-out items and filters first.")
+    weak = [r for r in pages if r[0].startswith("/products/") and r[1] >= 3000 and (r[5] >= 75 or pct(r[2], r[1]) < 0.5 * cart)]
+    if weak:
+        flag("med", f"{len(weak)} product page{'s' if len(weak) != 1 else ''} with heavy traffic and weak results",
+             "Worst: " + "; ".join(f"{r[0].replace('/products/', '')[:48]} ({r[1]:,} sessions, {r[5]:.0f}% bounce, {r[4]} orders)" for r in weak[:3]) + ".",
+             "Open each on a phone: first image, price, sizes in stock, delivery promise. See the landing page table below.")
+    abroad = [r for r in country if r[0] and r[0] != "India" and r[1] >= 1000]
+    if abroad and sum(r[4] for r in abroad) < 0.0005 * sum(r[1] for r in abroad):
+        flag("med", f"{sum(r[1] for r in abroad):,} international sessions produced {sum(r[4] for r in abroad)} orders",
+             ", ".join(f"{r[0]} {r[1]:,}" for r in abroad[:6]) + ".",
+             "Check currency, shipping cost and delivery time shown to visitors outside India, or stop paying for that traffic.")
+    if counts["No stock"] > 0.2 * max(live, 1):
+        flag("med", f"{counts['No stock']:,} of {live:,} live products have no stock",
+             "They still show in collections and search as sold out and push sellable styles down the page.",
+             "Unpublish or archive styles that are not coming back; keep only those with a restock planned.")
+    if counts["In stock with a content problem"]:
+        flag("med", f"{counts['In stock with a content problem']:,} in-stock products have a content problem",
+             ", ".join(f"{k}: {v:,}" for k, v in counts.items() if k not in ("No stock", "In stock with a content problem", "No search title or description") and v) + ".",
+             "Fix list is in the catalogue table below, in-stock products first.")
+    order = {"high": 0, "med": 1, "low": 2}
+    flags.sort(key=lambda x: order[x["s"]])
+    return dict(
+        meta=dict(updated=datetime.datetime.now(IST).isoformat(timespec="seconds"),
+                  date_from=(TODAY - datetime.timedelta(days=30)).isoformat(), date_to=yesterday.isoformat(), domain=raw.get("domain") or ""),
+        total=total, link=link, site=site, channels=channels, device=device, ltype=ltype, source=source, country=country,
+        pages=pages, weeks=weeks, flags=flags,
+        catalog=dict(live=live, counts=dict(counts), rows=issues[:700], listed=min(len(issues), 700), found=len(issues)))
+
+
+def save_site(products):
+    site = build_site(fetch_site(), products)
+    print(json.dumps(dict(site["meta"], total=site["total"], link=site["link"], flags=[f["t"] for f in site["flags"]],
+                          catalog=site["catalog"]["counts"]), indent=1))
+    if site["total"][0] < 1000 or not site["pages"]:
+        raise RuntimeError("site audit: session data looks empty, not saving")
+    print("site saved:", dash_rpc("dash_ingest", {"p_dashboard": DASHBOARD, "p_name": "site", "p_data": site}))
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -640,6 +805,12 @@ def main():
         return
     res = dash_rpc("dash_ingest", {"p_dashboard": DASHBOARD, "p_name": "products", "p_data": doc})
     print("saved:", res)
+    try:                                   # the site audit must never block the scorer save above
+        save_site(inp["products"])
+    except BaseException as e:             # includes SystemExit raised by the fetch helpers
+        print("SITE AUDIT FAILED:", repr(e))
+        traceback.print_exc()
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

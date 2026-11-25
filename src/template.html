@@ -9,11 +9,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* one page, two views: #view-dash (ads vs stock) and #view-scorer; each view's rules are scoped to its container */
+/* one page, three views: #view-dash (ads vs stock), #view-scorer and #view-site (website audit); each view's rules are scoped to its container */
 *{box-sizing:border-box}
 html,body{margin:0}
 __CSS_SCORER__
 __CSS_DASH__
+__CSS_SITE__
 __CSS_BAND__
 
 /* Mulmul Threads look: Poppins, charcoal on warm neutrals. Overrides the palettes above. */
@@ -51,7 +52,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
 .who button:hover{background:rgba(255,255,255,.14)}
 
 [hidden]{display:none!important}
-@media (max-width:760px){.switch button{flex:1;padding:8px 10px;white-space:normal}}
+@media (max-width:760px){.switch{width:100%}.switch button{flex:1;padding:8px 8px;white-space:normal;font-size:13px}.switch button small{display:none}}
 </style>
 </head>
 <body>
@@ -83,6 +84,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
     <div class="switch" role="tablist" aria-label="Views">
       <button type="button" role="tab" id="tab-dash" aria-selected="true">Ads vs Stock<small>Daily alerts and weekly review</small></button>
       <button type="button" role="tab" id="tab-scorer" aria-selected="false">Ad Product Scorer<small>What to push, hold or stop</small></button>
+      <button type="button" role="tab" id="tab-site" aria-selected="false">Site Audit<small>Where the website loses buyers</small></button>
     </div>
   </div>
   <div class="jump" id="jump"><a href="#daily">Daily stock check</a><a href="#performance">Performance by date</a><a href="#segments">Audience segments</a><a href="#weekly">Week in review</a></div>
@@ -92,6 +94,9 @@ __BODY_DASH__
 </div>
 <div id="view-scorer" hidden>
 __BODY_SCORER__
+</div>
+<div id="view-site" hidden>
+__BODY_SITE__
 </div>
 <script src="vendor/supabase.js?v=2.119.0"></script>
 <script>
@@ -127,20 +132,21 @@ __BODY_SCORER__
 </script>
 <script>
 (function(){
-  var META={dash:__META_D__,scorer:__META_S__},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer"},VIEWS=["dash","scorer"];
+  var META={dash:__META_D__,scorer:__META_S__,site:__META_W__},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer",site:"Site Audit"},VIEWS=["dash","scorer","site"];
   function g(i){return document.getElementById(i)}
   function show(v,target){
     VIEWS.forEach(function(x){g("view-"+x).hidden=x!==v;g("tab-"+x).setAttribute("aria-selected",x===v?"true":"false")});
     g("band-title").textContent=TITLE[v];g("band-meta").textContent=META[v];g("jump").hidden=v!=="dash";
     if(target){var t=g(target);if(t&&t.scrollIntoView)t.scrollIntoView()}
   }
-  function route(){var h=(location.hash||"").replace("#","");if(h==="scorer")show(h);else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
-  [["dash","stock"],["scorer","scorer"]].forEach(function(x){g("tab-"+x[0]).addEventListener("click",function(){if(location.hash!=="#"+x[1])location.hash=x[1];route();if(window.scrollTo)window.scrollTo(0,0)})});
+  function route(){var h=(location.hash||"").replace("#","");if(h==="scorer"||h==="site")show(h);else show("dash",(h==="daily"||h==="performance"||h==="segments"||h==="weekly")?h:null)}
+  [["dash","stock"],["scorer","scorer"],["site","site"]].forEach(function(x){g("tab-"+x[0]).addEventListener("click",function(){if(location.hash!=="#"+x[1])location.hash=x[1];route();if(window.scrollTo)window.scrollTo(0,0)})});
   window.addEventListener("hashchange",route);window.MulmulRoute=route;window.MulmulSetMeta=function(v,text){META[v]=text;route()};route();
 })();
 </script>
 <script>__JS_DASH__</script>
 <script>__JS_SCORER__</script>
+<script>__JS_SITE__</script>
 </div>
 </body>
 </html>
