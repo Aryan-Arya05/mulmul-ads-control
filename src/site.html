@@ -61,7 +61,7 @@ td.tags{text-align:left;min-width:220px}
 </style>
 </head>
 <body>
-<p class="bandmeta">Website sessions and catalogue from Shopify. Refreshed every Monday and Thursday morning.</p>
+<p class="bandmeta">Website sessions and catalogue from Shopify. Refreshed every morning.</p>
 <div class="wrap">
   <div class="empty" id="sa-empty">Loading the site audit…</div>
   <div id="sa-body" hidden style="display:flex;flex-direction:column;gap:22px">
@@ -170,7 +170,7 @@ td.tags{text-align:left;min-width:220px}
   g("sa-phead").addEventListener("click",function(e){var b=e.target.closest?e.target.closest(".th"):null;if(!b)return;var k=+b.getAttribute("data-k");
     if(psort.k===k)psort.dir=psort.dir==="desc"?"asc":"desc";else psort={k:k,dir:k===0?"asc":"desc"};pages()});
   window.MulmulDocs.get("site.json").then(function(doc){
-    if(!doc||!doc.total){g("sa-empty").textContent="The site audit has not been generated yet. It fills in on the next Monday or Thursday refresh.";return}
+    if(!doc||!doc.total){g("sa-empty").textContent="The site audit has not been generated yet. It fills in on the next morning refresh.";return}
     D=doc;g("sa-empty").hidden=true;g("sa-body").hidden=false;draw();
     var u=new Date(doc.meta.updated);
     if(window.MulmulSetMeta)window.MulmulSetMeta("site","Website sessions and catalogue: Shopify, "+day(doc.meta.date_from)+" to "+day(doc.meta.date_to)+(isNaN(u)?"":" · Updated "+u.toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"})+" IST"));

@@ -8,7 +8,7 @@ Internal dashboard for Shop Mulmul: Meta ads against real stock, the ad product 
 
 ## Scorer refresh
 
-`.github/workflows/scorer.yml` runs `scripts/scorer.py` on Monday and Thursday mornings (and on demand from the Actions tab). It reads Shopify sales and traffic and Vinculum stock, scores every product and saves the result to the database. It needs `DASH_INGEST_TOKEN` plus Shopify access with `read_products` and `read_reports`: either `SHOPIFY_ACCESS_TOKEN`, or `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` from an app made in the Shopify Dev Dashboard.
+`.github/workflows/scorer.yml` runs `scripts/scorer.py` every morning at 7:30 IST (and on demand from the Actions tab). It reads Shopify sales and traffic and Vinculum stock, scores every product and saves the result to the database. It needs `DASH_INGEST_TOKEN` plus Shopify access with `read_products` and `read_reports`: either `SHOPIFY_ACCESS_TOKEN`, or `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` from an app made in the Shopify Dev Dashboard.
 
 ## Changing the page
 

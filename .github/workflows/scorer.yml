@@ -2,8 +2,8 @@ name: Refresh Ad Product Scorer
 
 on:
   schedule:
-    # Mondays 07:30 IST (02:00 UTC), before the weekly review, and Thursdays 07:30 IST
-    - cron: "0 2 * * 1,4"
+    # every day 07:30 IST (02:00 UTC), before the daily ads check
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 permissions:

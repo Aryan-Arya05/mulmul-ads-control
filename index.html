@@ -714,7 +714,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
 </script>
 <script>
 (function(){
-  var META={dash:"Meta ad account 277407879800547, checked against real Vinculum stock counted as pairs. Updates every morning.",scorer:"Sales and traffic: Shopify India, 22 Oct to 21 Nov 2026 · Stock: Vinculum, synced 21 Nov 2026 around 3 pm IST · Production and in-transit: 19 Nov export · Meta ads: last 7 days",site:"Website sessions and catalogue from Shopify. Refreshed every Monday and Thursday morning."},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer",site:"Site Audit"},VIEWS=["dash","scorer","site"];
+  var META={dash:"Meta ad account 277407879800547, checked against real Vinculum stock counted as pairs. Updates every morning.",scorer:"Sales and traffic: Shopify India, 22 Oct to 21 Nov 2026 · Stock: Vinculum, synced 21 Nov 2026 around 3 pm IST · Production and in-transit: 19 Nov export · Meta ads: last 7 days",site:"Website sessions and catalogue from Shopify. Refreshed every morning."},TITLE={dash:"Ads vs Stock",scorer:"Ad Product Scorer",site:"Site Audit"},VIEWS=["dash","scorer","site"];
   function g(i){return document.getElementById(i)}
   function show(v,target){
     VIEWS.forEach(function(x){g("view-"+x).hidden=x!==v;g("tab-"+x).setAttribute("aria-selected",x===v?"true":"false")});
@@ -1155,7 +1155,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14p
   g("sa-phead").addEventListener("click",function(e){var b=e.target.closest?e.target.closest(".th"):null;if(!b)return;var k=+b.getAttribute("data-k");
     if(psort.k===k)psort.dir=psort.dir==="desc"?"asc":"desc";else psort={k:k,dir:k===0?"asc":"desc"};pages()});
   window.MulmulDocs.get("site.json").then(function(doc){
-    if(!doc||!doc.total){g("sa-empty").textContent="The site audit has not been generated yet. It fills in on the next Monday or Thursday refresh.";return}
+    if(!doc||!doc.total){g("sa-empty").textContent="The site audit has not been generated yet. It fills in on the next morning refresh.";return}
     D=doc;g("sa-empty").hidden=true;g("sa-body").hidden=false;draw();
     var u=new Date(doc.meta.updated);
     if(window.MulmulSetMeta)window.MulmulSetMeta("site","Website sessions and catalogue: Shopify, "+day(doc.meta.date_from)+" to "+day(doc.meta.date_to)+(isNaN(u)?"":" · Updated "+u.toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"})+" IST"));
