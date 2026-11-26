@@ -412,11 +412,11 @@ tr.grp td{background:rgba(120,130,160,.09);font-weight:600}
     ld.appendChild(el("p",null,pct(x.spend,tot)+" of spend reached existing customers and "+pct(n.spend,tot)+" reached new people. New audience ROAS is "+(roas(n)==null?"–":roas(n).toFixed(2))+(roas(prv["New audience"])!=null?", against "+roas(prv["New audience"]).toFixed(2)+" the week before.":".")));
     var tl=$("s-tiles");tl.textContent="";SG.forEach(function(g){var a=cur[g]||{spend:0,pur:0,val:0},p=prv[g];
       tile(tl,rs(a.spend),g,pct(a.spend,tot)+" of spend · ROAS "+(roas(a)==null?"–":roas(a).toFixed(2))+(p&&roas(p)!=null?" (was "+roas(p).toFixed(2)+")":"")+" · "+num(a.pur)+" purchases",roas(a)!=null&&roas(a)<1.5?"down":null)});
-    var mix=$("s-mix");mix.textContent="";var cm={};S.rows.forEach(function(r){var c=cm[r.c]=cm[r.c]||{t:0};c.t+=r.spend;c[r.seg]=(c[r.seg]||0)+r.spend});
+    var mix=$("s-mix");mix.textContent="";var cm={};S.rows.forEach(function(r){var c=cm[r.c]=cm[r.c]||{t:0};c.t+=r.spend;c[r.seg]=(c[r.seg]||0)+r.spend;if(r.by)c.by=1});
     Object.keys(cm).sort(function(a,b){return cm[b].t-cm[a].t}).forEach(function(c){var o=cm[c],row=el("div","mixrow");row.appendChild(el("span","lab",short(c)));var st=el("div","stack"),oth=o.t;
       SG.forEach(function(g){var v=o[g]||0;oth-=v;if(v>0){var i=el("i",CL[g]);i.style.width=(100*v/o.t)+"%";i.title=g+" "+pct(v,o.t);st.appendChild(i)}});
       if(oth>0){var i2=el("i","g-oth");i2.style.width=(100*oth/o.t)+"%";st.appendChild(i2)}
-      row.appendChild(st);row.appendChild(el("span","val",rs(o.t)+" · new "+pct(o["New audience"]||0,o.t)+" · existing "+pct(o["Existing customers"]||0,o.t)));mix.appendChild(row)});
+      row.appendChild(st);row.appendChild(el("span","val",rs(o.t)+" · new "+pct(o["New audience"]||0,o.t)+" · existing "+pct(o["Existing customers"]||0,o.t)+(o.by?" · from targeting":"")));mix.appendChild(row)});
     var stt={lv:"s",seg:""},ADL={ad:"ad",p:"product",th:"product theme",f:"creative format",s:"ad set",c:"campaign"},HD={ad:"Ad",p:"Product",th:"Product theme",f:"Creative format",s:"Ad set",c:"Campaign"};
     if(!S.ads||!S.ads.length){["ad","p","th","f"].forEach(function(v){var o=$("s-level").querySelector('option[value="'+v+'"]');if(o)o.remove()})}
     function draw(){
